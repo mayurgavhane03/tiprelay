@@ -1,0 +1,9 @@
+node_modules
+package-lock.json
+dist
+cdk.out
+.local
+.venv
+packages/frontend/tiprelay-android/android
+.turbo
+*.wav

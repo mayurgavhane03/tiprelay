@@ -1,0 +1,32 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "globalDependencies": [
+    "tsconfig.json",
+    "eslint.config.mjs",
+    "vitest.config.ts",
+    ".env",
+    ".env.production.local",
+    "scripts/**"
+  ],
+  "globalPassThroughEnv": [
+    "APP_ENV",
+    "LOCAL_AUTH_BYPASS",
+    "HOST",
+    "PORT",
+    "WEB_ORIGIN",
+    "STORAGE",
+    "TABLE_NAME",
+    "DYNAMODB_ENDPOINT",
+    "AWS_REGION",
+    "SPEECH_LOCAL_URL",
+    "VOICE_PATH",
+    "TIPRELAY_PYTHON"
+  ],
+  "tasks": {
+    "dev": { "cache": false, "persistent": true, "env": ["VITE_*"] },
+    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"], "env": ["VITE_*"] },
+    "typecheck": { "dependsOn": ["^typecheck"], "outputs": [] },
+    "lint": { "outputs": [] },
+    "test": { "dependsOn": ["^typecheck"], "outputs": [], "cache": false }
+  }
+}

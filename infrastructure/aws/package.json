@@ -1,0 +1,14 @@
+{
+  "name": "@tiprelay/aws",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.224.0",
+    "constructs": "^10.4.2"
+  }
+}

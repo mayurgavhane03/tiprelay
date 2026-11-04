@@ -1,0 +1,53 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+react {
+    reactNativeDir = file("../../../../../node_modules/react-native")
+    codegenDir = file("../../../../../node_modules/@react-native/codegen")
+    cliFile = file("../../../../../node_modules/react-native/cli.js")
+    autolinkLibrariesWithApp()
+}
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+    namespace "com.tiprelaycompanion"
+    defaultConfig {
+        applicationId "com.tiprelaycompanion"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "0.1.0"
+    }
+    signingConfigs {
+        release {
+            if (System.getenv("TIPRELAY_KEYSTORE")) {
+                storeFile file(System.getenv("TIPRELAY_KEYSTORE"))
+                storePassword System.getenv("TIPRELAY_STORE_PASSWORD")
+                keyAlias System.getenv("TIPRELAY_KEY_ALIAS")
+                keyPassword System.getenv("TIPRELAY_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+}
+tasks.configureEach { task ->
+    if (task.name == "validateSigningRelease") {
+        task.doFirst {
+            if (!System.getenv("TIPRELAY_KEYSTORE")) throw new GradleException("Release signing environment variables are required")
+        }
+    }
+}
+dependencies {
+    implementation("com.facebook.react:react-android")
+    implementation("com.facebook.react:hermes-android")
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+    implementation("androidx.core:core-ktx:1.16.0")
+    testImplementation("junit:junit:4.13.2")
+}

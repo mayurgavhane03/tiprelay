@@ -1,0 +1,11 @@
+FROM python:3.11.14-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY voice.json download_voice.py ./
+RUN python download_voice.py /opt/voices
+COPY synthesis.py local_server.py ./
+ENV VOICE_PATH=/opt/voices/en_US-ljspeech-high.onnx SPEECH_CONTAINER=true
+USER 65532:65532
+EXPOSE 5000
+CMD ["python", "local_server.py"]

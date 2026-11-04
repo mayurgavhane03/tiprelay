@@ -1,0 +1,14 @@
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:2.6.1
+    command: -jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data
+    ports: ['127.0.0.1:8000:8000']
+    volumes: ['dynamo-data:/home/dynamodblocal/data']
+  speech:
+    build:
+      context: packages/backend/speech-worker
+      dockerfile: Dockerfile.local
+    ports: ['127.0.0.1:5000:5000']
+    profiles: [speech]
+volumes:
+  dynamo-data:

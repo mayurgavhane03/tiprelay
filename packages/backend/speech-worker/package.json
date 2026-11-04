@@ -1,0 +1,8 @@
+{
+  "name": "@tiprelay/speech-worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../../scripts/speech-dev.mjs"
+  }
+}

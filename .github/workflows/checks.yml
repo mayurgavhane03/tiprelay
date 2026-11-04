@@ -1,0 +1,53 @@
+name: TipRelay checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: npm ci
+      - run: cp .env.example .env
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run cdk -- synth --quiet
+      - run: pip install -r packages/backend/speech-worker/requirements.txt
+      - run: python -m unittest discover -s packages/backend/speech-worker/tests
+      - run: docker compose up -d dynamodb
+      - run: npm run db:seed
+        env:
+          STORAGE: dynamo
+      - run: npm run dev > /tmp/tiprelay-dev.log 2>&1 &
+        env:
+          STORAGE: dynamo
+      - run: node scripts/wait-ready.mjs
+      - run: npm run smoke:alert
+      - run: npm run test:dynamo
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.1.12297006'
+      - run: npm ci
+      - run: chmod +x packages/frontend/tiprelay-android/android/gradlew
+      - run: npm run android:test
+      - run: cd packages/frontend/tiprelay-android/android && ./gradlew assembleDebug

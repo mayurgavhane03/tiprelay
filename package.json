@@ -1,0 +1,54 @@
+{
+  "name": "tiprelay",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/backend/*",
+    "packages/common/*",
+    "packages/frontend/*",
+    "infrastructure/aws"
+  ],
+  "engines": {
+    "node": ">=22.12 <25",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env node_modules/turbo/bin/turbo run dev --filter=@tiprelay/web --filter=@tiprelay/alert-api",
+    "db:seed": "tsx scripts/seed.ts",
+    "lint": "turbo run lint && eslint scripts *.ts *.mjs",
+    "typecheck": "turbo run typecheck && tsc -p tsconfig.scripts.json",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "smoke:alert": "tsx scripts/smoke.ts",
+    "cdk": "cdk --app \"npx tsx infrastructure/aws/bin/app.ts\"",
+    "android:test": "node scripts/android-test.mjs",
+    "test:dynamo": "tsx scripts/test-dynamo.ts",
+    "smoke:speech": "tsx scripts/smoke-speech.ts",
+    "data:purge": "tsx scripts/purge-creator.ts",
+    "dev:all": "node --env-file-if-exists=.env node_modules/turbo/bin/turbo run dev",
+    "dev:web": "node --env-file-if-exists=.env node_modules/turbo/bin/turbo run dev --filter=@tiprelay/web",
+    "dev:api": "node --env-file-if-exists=.env node_modules/turbo/bin/turbo run dev --filter=@tiprelay/alert-api",
+    "dev:android": "turbo run dev --filter=@tiprelay/android",
+    "dev:speech": "turbo run dev --filter=@tiprelay/speech-worker"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.19.0",
+    "@types/ws": "^8.18.1",
+    "aws-cdk": "^2.1033.0",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^3.2.4",
+    "prettier": "3.6.2",
+    "turbo": "^2.5.8"
+  },
+  "overrides": {
+    "vite": "6.4.5"
+  },
+  "type": "module",
+  "packageManager": "npm@12.0.2"
+}

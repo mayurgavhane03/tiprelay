@@ -1,0 +1,16 @@
+{
+  "provenance": "Synthetic fixtures, not copied from a physical app. No real payer details.",
+  "package": "com.phonepe.app",
+  "certifiedVersions": [],
+  "cases": [
+    {
+      "body": "You received ₹100.50 from Example Supporter\nUPI Ref: 123456789012",
+      "amountPaise": 10050,
+      "transactionReference": "123456789012"
+    },
+    { "body": "Received INR 100 from Example", "amountPaise": 10000 },
+    { "body": "You paid ₹100 to Example", "ignored": true },
+    { "body": "Example requested ₹100", "ignored": true },
+    { "body": "Payment pending", "ignored": true }
+  ]
+}
