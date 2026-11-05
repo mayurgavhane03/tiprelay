@@ -1,6 +1,7 @@
 import { accessToken } from './auth';
-export const apiBase = import.meta.env.VITE_API_URL || 'http://127.0.0.1:3001';
-export const wsBase = import.meta.env.VITE_WS_URL || 'ws://127.0.0.1:3001';
+export const apiBase = import.meta.env.VITE_API_URL;
+export const wsBase = import.meta.env.VITE_WS_URL;
+if (!apiBase || !wsBase) throw new Error('TipRelay API endpoints are not configured.');
 export async function api<T = any>(
   path: string,
   method = 'GET',
