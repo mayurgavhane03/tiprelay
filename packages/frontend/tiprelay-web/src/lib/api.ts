@@ -16,6 +16,10 @@ export async function api<T = any>(
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await response.json();
+  if (response.status === 401 && token && /^\/v1\/(dashboard|account|admin)(\/|$)/.test(path)) {
+    sessionStorage.removeItem('access_token');
+    location.replace('/');
+  }
   if (!response.ok) throw new Error(data.error || 'Request failed');
   return data;
 }

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import { companion } from '../native';
+import { deployment } from '../auth/config';
+import { accessToken } from '../auth/session';
 export function PairingScreen({ onPaired }: { onPaired: () => void }) {
-  const [url, setUrl] = useState(__DEV__ ? 'http://127.0.0.1:3001' : ''),
-    [code, setCode] = useState(''),
+  const [code, setCode] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   return (
@@ -13,14 +14,6 @@ export function PairingScreen({ onPaired }: { onPaired: () => void }) {
         Generate a pairing code in your TipRelay dashboard. Codes expire after
         five minutes and work once.
       </Text>
-      <TextInput
-        style={styles.input}
-        accessibilityLabel="TipRelay API URL"
-        placeholder="https://your-api.execute-api.region.amazonaws.com"
-        autoCapitalize="none"
-        value={url}
-        onChangeText={setUrl}
-      />
       <TextInput
         style={styles.input}
         accessibilityLabel="Pairing code"
@@ -37,11 +30,15 @@ export function PairingScreen({ onPaired }: { onPaired: () => void }) {
         onPress={async () => {
           setBusy(true);
           try {
-            await companion.pair(url.trim(), code.trim());
+            await companion.pair(
+              deployment.apiUrl,
+              code.trim(),
+              await accessToken(),
+            );
             onPaired();
           } catch {
             setError(
-              'Pairing failed. Check the API address and request a fresh code.',
+              'Pairing failed. Use the same Google account as the dashboard and request a fresh code.',
             );
           } finally {
             setBusy(false);

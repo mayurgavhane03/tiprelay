@@ -15,7 +15,15 @@ import java.util.concurrent.Executors
 class TipRelayModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
     private val executor = Executors.newSingleThreadExecutor()
     override fun getName() = "TipRelay"
-    @ReactMethod fun pair(baseUrl: String, code: String, promise: Promise) {
+    override fun getConstants(): MutableMap<String, Any> = mutableMapOf(
+        "deployment" to mapOf(
+            "apiUrl" to BuildConfig.API_URL,
+            "cognitoDomain" to BuildConfig.COGNITO_DOMAIN,
+            "mobileClientId" to BuildConfig.MOBILE_CLIENT_ID,
+            "webUrl" to BuildConfig.WEB_URL
+        )
+    )
+    @ReactMethod fun pair(baseUrl: String, code: String, accessToken: String, promise: Promise) {
         executor.execute {
             try {
                 val url = URL(baseUrl.trimEnd('/'))
@@ -29,21 +37,35 @@ class TipRelayModule(private val context: ReactApplicationContext) : ReactContex
                     connection.readTimeout = 15000
                     connection.doOutput = true
                     connection.setRequestProperty("Content-Type", "application/json")
+                    connection.setRequestProperty("Authorization", "Bearer $accessToken")
                     connection.outputStream.use { it.write(JSONObject().put("code", code).toString().toByteArray()) }
                     check(connection.responseCode == 200)
-                    val token = connection.inputStream.bufferedReader().use { JSONObject(it.readText()).getString("token") }
+                    val result = connection.inputStream.bufferedReader().use { JSONObject(it.readText()) }
                     EventQueue(context).use { it.clear() }
-                    SecureSettings(context).save(url.toString(), token)
+                    SecureSettings(context).save(url.toString(), result.getString("token"), result.getString("creatorId"))
                     UploadWorker.schedule(context)
                     promise.resolve(null)
                 } finally { connection.disconnect() }
             } catch (_: Exception) { promise.reject("PAIR_FAILED", "Pairing failed") }
         }
     }
+    @ReactMethod fun saveSession(token: String, promise: Promise) {
+        try { SecureSettings(context, "tiprelay-session").save("", token); promise.resolve(null) }
+        catch (_: Exception) { promise.reject("SESSION_FAILED", "Unable to save session") }
+    }
+    @ReactMethod fun readSession(promise: Promise) {
+        try { promise.resolve(SecureSettings(context, "tiprelay-session").token()) }
+        catch (_: Exception) { promise.reject("SESSION_FAILED", "Unable to read session") }
+    }
+    @ReactMethod fun clearSession(promise: Promise) {
+        try { SecureSettings(context, "tiprelay-session").clear(); promise.resolve(null) }
+        catch (_: Exception) { promise.reject("SESSION_FAILED", "Unable to clear session") }
+    }
     @ReactMethod fun diagnostics(promise: Promise) {
         try {
             val settings = SecureSettings(context)
             promise.resolve(Arguments.createMap().apply {
+                putString("creatorId", settings.creatorId())
                 putBoolean("paired", settings.token() != null)
                 putBoolean("notificationAccess", NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName))
                 putString("lastSync", settings.lastSync())

@@ -36,8 +36,8 @@ export class DynamoStore implements Store {
       const r = await this.client.send(
         new QueryCommand({
           TableName: this.table,
-          KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
-          ExpressionAttributeValues: { ':pk': pk, ':prefix': prefix },
+          KeyConditionExpression: prefix ? 'pk = :pk AND begins_with(sk, :prefix)' : 'pk = :pk',
+          ExpressionAttributeValues: prefix ? { ':pk': pk, ':prefix': prefix } : { ':pk': pk },
           ConsistentRead: true,
           ExclusiveStartKey: cursor,
         }),
@@ -46,6 +46,22 @@ export class DynamoStore implements Store {
       cursor = r.LastEvaluatedKey;
     } while (cursor);
     return rows;
+  }
+  async page(pk: string, after?: string) {
+    const result = await this.client.send(
+      new QueryCommand({
+        TableName: this.table,
+        KeyConditionExpression: 'pk = :pk',
+        ExpressionAttributeValues: { ':pk': pk },
+        ConsistentRead: true,
+        Limit: 50,
+        ...(after ? { ExclusiveStartKey: { pk, sk: after } } : {}),
+      }),
+    );
+    return {
+      rows: (result.Items || []) as Row[],
+      next: result.LastEvaluatedKey?.sk as string | undefined,
+    };
   }
   async transact(changes: Change[]) {
     try {

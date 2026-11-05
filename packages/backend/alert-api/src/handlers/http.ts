@@ -3,11 +3,12 @@ import { route } from '../http/router';
 import { service } from './runtime';
 const verifier = CognitoJwtVerifier.create({
   userPoolId: process.env.USER_POOL_ID!,
-  clientId: process.env.USER_POOL_CLIENT_ID!,
+  clientId: [process.env.USER_POOL_CLIENT_ID!, process.env.MOBILE_CLIENT_ID!].filter(Boolean),
   tokenUse: 'access',
 });
 export async function handler(event: any) {
   const correlationId = event.requestContext.requestId;
+  if (event.requestContext.http.method === 'OPTIONS') return { statusCode: 204 };
   const headers = {
     'content-type': 'application/json',
     'cache-control': 'no-store',
@@ -15,7 +16,10 @@ export async function handler(event: any) {
   };
   let creatorId: string | undefined;
   const token = (event.headers?.authorization || '').replace(/^Bearer /, '');
-  if (event.rawPath.startsWith('/v1/dashboard')) {
+  if (
+    /^\/v1\/(dashboard|account|admin)(\/|$)/.test(event.rawPath) ||
+    event.rawPath === '/v1/device/pair'
+  ) {
     try {
       creatorId = (await verifier.verify(token)).sub;
     } catch {
@@ -45,6 +49,7 @@ export async function handler(event: any) {
     creatorId,
     ip: event.requestContext.http.sourceIp,
     correlationId,
+    cursor: event.queryStringParameters?.cursor,
   });
   return { statusCode: result.status, headers, body: JSON.stringify(result.body) };
 }

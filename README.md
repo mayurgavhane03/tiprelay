@@ -2,7 +2,7 @@
 
 Direct-UPI tip alerts for Indian livestreamers. Fans pay the creator’s own UPI address. An Android companion observes supported incoming-credit notifications, and a private OBS Browser Source displays the amount and plays a chime. Creators review matched supporter messages before Piper generates speech.
 
-This repository contains a working local implementation and AWS deployment infrastructure. It has **not been approved for public launch**. Physical Android payment capture, OBS recording, AWS deployment and Android release signing require the checks in [the release checklist](docs/release-checks.md). Phone notifications are best-effort observations, not settlement confirmation.
+This repository contains a working local implementation and AWS deployment infrastructure. A backend-only development stack is deployed in AWS account `627551519784`, `ap-south-1`; hosted web and speech are pending AWS account limits. It has **not been approved for public launch**. Physical Android payment capture, OBS recording and Android release signing require the checks in [the release checklist](docs/release-checks.md). Phone notifications are best-effort observations, not settlement confirmation.
 
 ## Project layout
 
@@ -83,7 +83,17 @@ npm run cdk -- synth --quiet
 npm run android:test
 ```
 
-`build` creates the web assets and bundled Lambda handlers. Android has separate Gradle build/signing steps. CDK synthesis needs the Lambda bundles, but does not deploy or build the speech container. Docker is needed to build that image before deployment. See [verification results](docs/verification.md) for actual checks performed here.
+`build` creates the web assets and bundled Lambda handlers. Android has separate Gradle build/signing steps. CDK synthesis needs the Lambda bundles. The Piper image can be built remotely in AWS after the CodeBuild quota is granted, so local Docker is optional. See [verification results](docs/verification.md) for actual checks performed here.
+
+## Google login and administration
+
+The public landing page is `/`. Production users sign in only with Google before opening `/dashboard`. `/admin` requires an operator-assigned admin role; all new accounts default to `user`. The Android companion uses the same Google account and checks pairing ownership. See [Google setup, admin bootstrap, and APK downloads](docs/google-login-and-admin.md).
+
+In local development, use **Open local development demo** in the landing-page footer. This explicitly labeled demo is available only with the loopback development bypass and is excluded from production builds. Google sign-in requires external OAuth configuration, and the Android download stays disabled until a signed APK URL is configured.
+
+## Android environment configuration
+
+Android now reads public URLs and its Cognito client ID from root `.env.android.development.local` or `.env.android.production.local` during the native build. Signing inputs stay separate in protected shell/CI variables or ignored `.env.android.signing.local`. See [Android environment setup and APK commands](docs/android-environments.md).
 
 ## Guides
 

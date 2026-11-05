@@ -115,11 +115,11 @@ export default function Dashboard() {
               <b>{data?.profile.displayName || 'Your channel'}</b>
               <small>{localMode ? 'Local workspace' : 'Creator account'}</small>
             </div>
-            {!localMode && (
+            {
               <button onClick={logout} title="Sign out">
                 ↗
               </button>
-            )}
+            }
           </div>
         </div>
       </aside>
@@ -140,6 +140,9 @@ export default function Dashboard() {
             <span className="dot" />
             {localMode ? 'Local development' : 'Creator workspace'}
           </span>
+          <button className="button" onClick={logout}>
+            Sign out
+          </button>
         </header>
         <div className="page-content">
           <div className="page-heading">
@@ -496,6 +499,12 @@ export default function Dashboard() {
                 A matching reference links a message to an observation. It does not prove the
                 sender’s identity. Review every message before approving.
               </p>
+              {data?.speechAvailable === false && (
+                <p className="review-notice" role="status">
+                  Speech is temporarily unavailable. Messages remain pending and tip chimes still
+                  play.
+                </p>
+              )}
               {!data?.messages.length && (
                 <div className="empty">
                   <AudioLines size={30} />
@@ -509,6 +518,7 @@ export default function Dashboard() {
                   message={m}
                   observations={observations}
                   busy={busy}
+                  speechAvailable={data.speechAvailable !== false}
                   action={(action, observationId) =>
                     act(async () => {
                       await api(
@@ -539,11 +549,13 @@ function MessageRow({
   message: m,
   observations,
   busy,
+  speechAvailable,
   action,
 }: {
   message: any;
   observations: any[];
   busy: boolean;
+  speechAvailable: boolean;
   action: (a: string, id?: string) => void;
 }) {
   const [selected, setSelected] = useState('');
@@ -572,7 +584,7 @@ function MessageRow({
           )}
           <button
             className="button primary"
-            disabled={busy || (m.state !== 'matched' && !selected)}
+            disabled={busy || !speechAvailable || (m.state !== 'matched' && !selected)}
             onClick={() => action('approve', selected || undefined)}
           >
             Approve speech

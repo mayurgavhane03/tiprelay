@@ -36,6 +36,7 @@ export class Service {
   async creator(id: string) {
     const row = await this.store.get(tenant(id), 'PROFILE');
     if (!row || row.deleted) throw new HttpError(404, 'Creator unavailable');
+    if (row.banned) throw new HttpError(403, 'Account suspended');
     return row;
   }
   async provision(id: string) {
@@ -43,6 +44,7 @@ export class Service {
       const old = await this.store.get(tenant(id), 'PROFILE');
       if (old) {
         if (old.deleted) throw new HttpError(410, 'Creator deleted');
+        if (old.banned) throw new HttpError(403, 'Account suspended');
         return old;
       }
       const slug = id === 'demo' ? 'demo' : `creator-${hash(id).slice(0, 16)}`;
@@ -55,12 +57,92 @@ export class Service {
         upiId: '',
         overlayVersion: 0,
         deleted: false,
+        banned: false,
+        role: 'user',
+        joinedAt: this.clock(),
       });
       await this.store.transact([
         profile,
+        insert({ pk: 'ACCOUNTS', sk: id, creatorId: id }),
         insert({ pk: `SLUG#${slug}`, sk: 'LOOKUP', creatorId: id }),
       ]);
       return profile.row;
+    });
+  }
+  async account(id: string) {
+    const profile = await this.provision(id);
+    await this.retry(async () => {
+      const current = await this.creator(id);
+      const registry = await this.store.get('ACCOUNTS', id);
+      if (!registry)
+        await this.store.transact([
+          next(current),
+          insert({ pk: 'ACCOUNTS', sk: id, creatorId: id }),
+        ]);
+    });
+    return {
+      creatorId: id,
+      role: profile.role === 'admin' ? 'admin' : 'user',
+      displayName: profile.displayName,
+    };
+  }
+  async requireAdmin(id: string) {
+    const actor = await this.creator(id);
+    if (actor.role !== 'admin') throw new HttpError(403, 'Administrator access required');
+    return actor;
+  }
+  async users(id: string, after?: string) {
+    await this.requireAdmin(id);
+    if (after && after.length > 256) throw new HttpError(400, 'Invalid cursor');
+    const page = await this.store.page('ACCOUNTS', after);
+    const registry = page.rows;
+    const users = [];
+    // Fetch sequentially to bound database pressure. Only account metadata is returned.
+    for (const entry of registry) {
+      const p = await this.store.get(tenant(entry.creatorId), 'PROFILE');
+      if (p)
+        users.push({
+          creatorId: p.creatorId,
+          displayName: p.displayName,
+          role: p.role || 'user',
+          status: p.deleted ? 'deleted' : p.banned ? 'banned' : 'active',
+          joinedAt: p.joinedAt,
+        });
+    }
+    await this.requireAdmin(id);
+    return { users, next: page.next };
+  }
+  async manageUser(actorId: string, targetId: string, action: string) {
+    if (!['ban', 'unban', 'delete'].includes(action)) throw new HttpError(400, 'Invalid action');
+    return this.retry(async () => {
+      const actor = await this.requireAdmin(actorId);
+      const target = await this.store.get(tenant(targetId), 'PROFILE');
+      if (!target || target.deleted) throw new HttpError(404, 'Account unavailable');
+      if (actorId === targetId || target.role === 'admin')
+        throw new HttpError(409, 'Administrator accounts are protected');
+      const updated: Row = {
+        ...target,
+        banned: action !== 'unban',
+        deleted: action === 'delete',
+        overlayVersion: target.overlayVersion + 1,
+      };
+      if (action === 'delete') {
+        updated.displayName = 'Deleted';
+        updated.upiId = '';
+      }
+      await this.store.transact([
+        next(actor),
+        next(updated),
+        insert({
+          pk: 'ADMIN_AUDIT',
+          sk: `${this.clock()}#${randomUUID()}`,
+          actorId,
+          targetId,
+          action,
+          ttl: this.clock() + 90 * 86400,
+        }),
+      ]);
+      return { ok: true };
     });
   }
   async publicCreator(slug: string) {
@@ -113,11 +195,13 @@ export class Service {
     ]);
     return { code, expiresAt: this.clock() + 300 };
   }
-  async pair(code: string) {
+  async pair(code: string, ownerId?: string) {
     const row = await this.store.get(`PAIR#${hash(code.toUpperCase())}`, 'CODE');
     if (!row || row.used || row.ttl! <= this.clock())
       throw new HttpError(401, 'Invalid or expired pairing code');
     const profile = await this.creator(row.creatorId);
+    if (ownerId !== undefined && ownerId !== row.creatorId)
+      throw new HttpError(403, 'Pairing code belongs to another account');
     const token = secret(),
       deviceId = randomUUID();
     try {
@@ -144,7 +228,7 @@ export class Service {
       if (e instanceof Conflict) throw new HttpError(409, 'Pairing changed. Request a new code.');
       throw e;
     }
-    return { token, deviceId };
+    return { token, deviceId, creatorId: row.creatorId };
   }
   async device(token: string) {
     const row = await this.store.get(`DEVICE#${hash(token)}`, 'AUTH');
@@ -399,6 +483,11 @@ export class Service {
         await this.store.transact([next({ ...m, status: 'rejected' })]);
         return { status: 'rejected' };
       }
+      if (process.env.SPEECH_ENABLED === 'false')
+        throw new HttpError(
+          503,
+          'Speech is temporarily unavailable. Your message remains pending.',
+        );
       const match = this.match(m, rows);
       const alertId = manualAlertId || match.alertId;
       const observation = rows.find((r) => r.sk === `OBS#${alertId}`);
@@ -509,6 +598,7 @@ export class Service {
         .map((j) => ({ jobId: j.jobId, status: j.status, expiresAt: j.expiresAt })),
       notice:
         'Observed credits are best-effort notification signals. Verify settlement in your bank or UPI app.',
+      speechAvailable: process.env.SPEECH_ENABLED !== 'false',
     };
   }
   async deleteCreator(id: string) {

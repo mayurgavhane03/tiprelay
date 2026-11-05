@@ -21,6 +21,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run cdk -- synth --quiet
+      - run: node scripts/check-auth-stack.mjs
       - run: pip install -r packages/backend/speech-worker/requirements.txt
       - run: python -m unittest discover -s packages/backend/speech-worker/tests
       - run: docker compose up -d dynamodb

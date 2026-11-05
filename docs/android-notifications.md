@@ -32,16 +32,14 @@ Grant access only after reading the in-app disclosure. Use a dedicated creator U
 
 ```powershell
 npm run android:test
-Push-Location packages/frontend/tiprelay-android/android
-.\gradlew.bat assembleDebug
-Pop-Location
+npm run android:apk:debug
 ```
 
 JDK 17, SDK 36, Build Tools 36.0.0 and NDK 27.1.12297006 are required. Set `ANDROID_HOME` to your SDK and `JAVA_HOME` to JDK 17. Install the SDK with Android Studio. Gradle wrapper 8.14.3 is included. Minimum supported Android API is 26.
 
 ## Release signing and distribution
 
-Create a dedicated upload keystore outside the repository. Store it in your team’s secret manager and keep a tested recovery copy. Never commit keystores, passwords, `local.properties` or signing environment values. The release Gradle task fails without signing configuration and does not fall back to a debug key.
+First configure [Android environment files](android-environments.md). Create a dedicated upload keystore outside the repository. Store it in your team’s secret manager and keep a tested recovery copy. Never commit keystores, passwords, `local.properties` or signing environment values. The release Gradle task fails without signing configuration and does not fall back to a debug key.
 
 ```powershell
 # Obtain these values securely in your shell. Do not save them in tracked scripts.
@@ -49,12 +47,14 @@ $env:TIPRELAY_KEYSTORE='C:\secure\tiprelay-upload.jks'
 $env:TIPRELAY_KEY_ALIAS='tiprelay-upload'
 $env:TIPRELAY_STORE_PASSWORD=Read-Host 'Keystore password' -MaskInput
 $env:TIPRELAY_KEY_PASSWORD=Read-Host 'Key password' -MaskInput
-Push-Location packages/frontend/tiprelay-android/android
-.\gradlew.bat bundleRelease
-Pop-Location
+npm run android:bundle:release
 Remove-Item Env:TIPRELAY_STORE_PASSWORD,Env:TIPRELAY_KEY_PASSWORD
 ```
 
-Use PowerShell 7 for `-MaskInput`. The bundle is `packages/frontend/tiprelay-android/android/app/build/outputs/bundle/release/app-release.aab`. For private APK testing run `assembleRelease` with the same signing environment, verify the signing certificate using `apksigner verify --print-certs`, and distribute through a controlled internal channel. For Play distribution enroll in Play App Signing, upload to internal testing, complete notification-access/privacy disclosures and test the installed release build. Verify the release manifest disallows cleartext traffic.
+Use PowerShell 7 for `-MaskInput`. The bundle is `packages/frontend/tiprelay-android/android/app/build/outputs/bundle/release/app-release.aab`. For private APK testing run `npm run android:apk:release` with the same signing environment, verify the signing certificate using `apksigner verify --print-certs`, and distribute through a controlled internal channel. For Play distribution enroll in Play App Signing, upload to internal testing, complete notification-access/privacy disclosures and test the installed release build. Verify the release manifest disallows cleartext traffic.
 
 Record app package/version, OS build, phone model, notification locale, battery mode, redacted fixture shape, receiving UPI account, test timestamp and observed latency for each physical release test. Keep payer names and actual transaction references out of test fixtures and repository issues.
+
+## Google session and account-owned pairing
+
+The welcome screen explains the product before requesting Google sign-in. Configure the separate Cognito mobile client as described in [Google login setup](google-login-and-admin.md). AppAuth 8.1.0 is pinned to the React Native 0.81-compatible major. Refresh tokens and paired-device tokens use separate Android Keystore namespaces. The server requires the same creator account on the pairing code and Google access token. Sign-out disconnects the local phone and clears pending uploads. Native AppAuth compilation, callback handling, cancellation, restart refresh, account switching, and release signing are still device acceptance checks.

@@ -18,6 +18,13 @@ export class FileStore implements Store {
       Object.values(this.rows).filter((r) => r.pk === pk && r.sk.startsWith(prefix)),
     );
   }
+  async page(pk: string, after?: string) {
+    const matching = (await this.query(pk))
+      .filter((r) => !after || r.sk > after)
+      .sort((a, b) => (a.sk < b.sk ? -1 : a.sk > b.sk ? 1 : 0));
+    const rows = matching.slice(0, 50);
+    return { rows, next: matching.length > 50 ? rows[rows.length - 1].sk : undefined };
+  }
   async transact(changes: Change[]) {
     const updated = { ...this.rows };
     for (const { row, expected } of changes) {

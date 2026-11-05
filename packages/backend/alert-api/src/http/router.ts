@@ -10,6 +10,7 @@ export interface Request {
   creatorId?: string;
   ip: string;
   correlationId?: string;
+  cursor?: string;
 }
 export async function route(service: Service, request: Request) {
   const correlationId = request.correlationId || randomUUID();
@@ -27,12 +28,26 @@ export async function route(service: Service, request: Request) {
       const code = (body as { code?: string })?.code;
       if (typeof code !== 'string' || !/^[A-Fa-f0-9]{12}$/.test(code))
         throw new HttpError(400, 'Invalid code');
-      result = await service.pair(code);
+      if (!creatorId) throw new HttpError(401, 'Sign in required');
+      result = await service.pair(code, creatorId);
     } else if (method === 'POST' && path === '/v1/device/payment-observations')
       result = await service.observe(token || '', body);
     else if (method === 'POST' && path === '/v1/overlay/session') {
       await service.rate(`overlay-ip:${ip}`, 120);
       result = await service.ticket(token || '');
+    } else if (path === '/v1/account') {
+      if (!creatorId) throw new HttpError(401, 'Sign in required');
+      if (method !== 'GET') throw new HttpError(405, 'Method not allowed');
+      result = await service.account(creatorId);
+    } else if (path.startsWith('/v1/admin/')) {
+      if (!creatorId) throw new HttpError(401, 'Sign in required');
+      await service.requireAdmin(creatorId);
+      await service.rate(`admin:${creatorId}`, 60);
+      if (method === 'GET' && path === '/v1/admin/users')
+        result = await service.users(creatorId, request.cursor);
+      else if (method === 'POST' && /^\/v1\/admin\/users\/[^/]+\/(ban|unban|delete)$/.test(path))
+        result = await service.manageUser(creatorId, decodeURIComponent(parts[3]), parts[4]);
+      else throw new HttpError(404, 'Route not found');
     } else if (path.startsWith('/v1/dashboard')) {
       if (!creatorId) throw new HttpError(401, 'Sign in required');
       await service.rate(`dashboard:${creatorId}`, 180);

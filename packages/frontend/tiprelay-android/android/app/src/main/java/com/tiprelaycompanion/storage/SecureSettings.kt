@@ -10,13 +10,13 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-class SecureSettings(context: Context) {
-    private val prefs = context.getSharedPreferences("tiprelay", Context.MODE_PRIVATE)
+class SecureSettings(context: Context, private val namespace: String = "tiprelay") {
+    private val prefs = context.getSharedPreferences(namespace, Context.MODE_PRIVATE)
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (store.getKey("tiprelay-device", null) as? SecretKey)?.let { return it }
+        (store.getKey("$namespace-device", null) as? SecretKey)?.let { return it }
         return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
-            init(KeyGenParameterSpec.Builder("tiprelay-device", KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())
+            init(KeyGenParameterSpec.Builder("$namespace-device", KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())
         }.generateKey()
     }
     fun token(): String? {
@@ -28,12 +28,13 @@ class SecureSettings(context: Context) {
             String(cipher.doFinal(data.copyOfRange(12, data.size)), Charsets.UTF_8)
         } catch (_: Exception) { null }
     }
-    fun save(url: String, token: String) {
+    fun save(url: String, token: String, creatorId: String = "") {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
         val encoded = Base64.encodeToString(cipher.iv + cipher.doFinal(token.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
-        check(prefs.edit().putString("credential", encoded).putString("url", url).putString("lastError", "").commit())
+        check(prefs.edit().putString("creatorId", creatorId).putString("credential", encoded).putString("url", url).putString("lastError", "").commit())
     }
+    fun creatorId(): String = prefs.getString("creatorId", "") ?: ""
     fun url(): String = prefs.getString("url", "") ?: ""
     fun lastSync(): String = prefs.getString("lastSync", "") ?: ""
     fun error(): String = prefs.getString("lastError", "") ?: ""

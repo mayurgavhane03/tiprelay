@@ -13,6 +13,16 @@
 body {
   margin: 0;
 }
+.account-nav {
+  padding: 8px 20px;
+  background: #e6eedb;
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+}
+.account-nav a {
+  color: #30523b;
+}
 button,
 input,
 textarea,
@@ -115,12 +125,12 @@ small {
   margin: 53px 13px 15px;
   font-weight: 700;
 }
-nav {
+.sidebar nav {
   display: flex;
   flex-direction: column;
   gap: 7px;
 }
-nav button {
+.sidebar nav button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -131,12 +141,12 @@ nav button {
   padding: 13px 12px;
   font-size: 13px;
 }
-nav button.active {
+.sidebar nav button.active {
   background: #eaf2ec;
   color: #356349;
   font-weight: 700;
 }
-nav button:hover {
+.sidebar nav button:hover {
   background: #f0f4f0;
 }
 .count {
@@ -1052,17 +1062,17 @@ label small {
   }
   .workspace-label,
   .sidebar-bottom,
-  nav .count {
+  .sidebar nav .count {
     display: none;
   }
-  nav {
+  .sidebar nav {
     margin-top: 40px;
   }
-  nav button {
+  .sidebar nav button {
     font-size: 0;
     padding: 14px;
   }
-  nav svg {
+  .sidebar nav svg {
     flex-shrink: 0;
   }
   .main {

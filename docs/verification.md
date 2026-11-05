@@ -18,7 +18,7 @@ Local work was verified on Windows on 4 November 2026. This record distinguishes
 | Root Turbo development  | `npm run dev` starts web/API; `npm run dev:all` starts web/API/Piper/Metro on loopback                                                                |
 | TypeScript              | Workspace type checks and root script types                                                                                                           |
 | ESLint                  | Workspace and root script checks                                                                                                                      |
-| Application tests       | 22 passing tests covering isolation, revocation, retries, equal amounts, matching, speech failure and expiry                                          |
+| Application tests       | 35 passing tests covering isolation, revocation, retries, equal amounts, matching, speech failure and expiry                                          |
 | Kotlin parser           | Four actual `CreditParserTest` JUnit tests compiled/run with Kotlin 2.1.20 and JUnit 4.13.2 outside Android Gradle                                    |
 | Python tests            | Two tests for text limits and retriable worker failures                                                                                               |
 | React Native JavaScript | Metro produced the Android production JS bundle                                                                                                       |
@@ -44,3 +44,15 @@ The SDK-free Kotlin test run uses the exact repository parser and test source wi
 - The high-severity Zod advisory was addressed by updating to 4.6.7. Remaining inherited tooling advisories and release artifact inventories are tracked in `dependency-review.md`.
 
 Use `release-checks.md` for the exact acceptance procedure. These limits prevent declaring the product launch-ready.
+
+## Google login and administration increment
+
+Added public product landing, Google-only Cognito OAuth clients, web PKCE and route gates, Android AppAuth welcome/login with Keystore refresh storage, account-owned pairing, server-side roles, paged admin directory, ban/restore/deletion requests, and operator-only role bootstrap. Thirteen additional automated tests passed for roles, escalation denial, revoked access through bans, ownership, audit, deletion tombstones, and pagination, including OAuth state/PKCE/callback-reuse checks, pending-alert suppression, and concurrent administrator-role revocation. Web/API builds, TypeScript, ESLint, and Metro Android production JavaScript bundling passed. Browser checks confirmed the public landing, missing-Google-configuration message, dashboard login gate, local demo, and denial of the admin page to a normal user.
+
+Real Google OAuth has not been executed because the external Google/Cognito deployment is not configured or authorized. Native AppAuth integration still needs Android SDK compilation and signed-device callback testing. The APK download remains intentionally disabled until a validated signed release URL is provided. No AWS resources were deployed.
+
+The updated CDK template also passed `node scripts/check-auth-stack.mjs`, which asserts Google-only authorization-code clients, disabled password/SRP flows, separate mobile client, and JWT-protected account, admin, dashboard and pairing routes. Python tests (2) and the actual local WebSocket/chime-asset smoke passed again after the account changes.
+
+## Android environment build setup — 5 November 2026
+
+Android public configuration now comes from stage-specific ignored environment files or CI variables, with four allowlisted values exposed through native BuildConfig. Private signing inputs are loaded separately by the root APK/AAB build wrappers. Four configuration tests verify field exclusion, required production fields, URL validation, and CI loading. Git ignore checks confirmed that development, production, and signing local files are excluded. ESLint and TypeScript checks passed. Native APK validation still requires the Android SDK and signed-device release checks. See `android-environments.md`.

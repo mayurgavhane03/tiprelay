@@ -23,9 +23,9 @@ flowchart LR
 
 ## Boundaries and credentials
 
-The HTTP API verifies Cognito access tokens, including issuer, client and token use. API Gateway also applies a Cognito JWT authorizer to dashboard routes. Creator IDs come from the token `sub`, never request data. Local bypass requires all of `APP_ENV=local`, `LOCAL_AUTH_BYPASS=true`, host `127.0.0.1`, and no AWS runtime indicators. AWS development stacks require Cognito too.
+The HTTP API verifies Cognito access tokens, including issuer, client and token use. API Gateway also applies a Cognito JWT authorizer to dashboard, account, admin, and device-pairing routes. Creator IDs come from the token `sub`, never request data. Local bypass requires all of `APP_ENV=local`, `LOCAL_AUTH_BYPASS=true`, host `127.0.0.1`, and no AWS runtime indicators. AWS development stacks require Cognito too.
 
-Device tokens and overlay secrets are independently generated 256-bit random values. Only SHA-256 lookup hashes are stored. A pairing code has 48 bits of entropy, a five-minute TTL and a conditional single-use flag. Pairing is rate-limited by IP. Device revoke changes both the creator’s device record and credential lookup atomically.
+Device tokens and overlay secrets are independently generated 256-bit random values. Only SHA-256 lookup hashes are stored. A pairing code has 48 bits of entropy, a five-minute TTL and a conditional single-use flag. Pairing is rate-limited by IP and requires a Google-authenticated creator whose subject matches the code owner. Device revoke changes both the creator’s device record and credential lookup atomically.
 
 The OBS secret lives in a URL fragment, is never included in an HTTP request URL, and is exchanged using an Authorization header for a 30-second single-use ticket. Tickets are consumed transactionally on WebSocket connection. Socket URLs contain tickets, so access logging deliberately excludes query strings and headers. Rotation increments the creator’s overlay version. Publication and replay check the version for every connection, including existing sockets.
 
@@ -67,3 +67,7 @@ Approval and the speech outbox commit together. SQS carries creator/job identifi
 The Kotlin service reads only the allowlisted package and uploads only the normalized contract. Notification bodies and payer details are never persisted by TipRelay. The app may miss notifications or receive a format without the receiving UPI identity. Use a dedicated creator payment identity and clearly communicate that alerts do not establish settlement. Device credentials can fabricate observations if compromised, making device revocation essential.
 
 Structured logs include event names, request/job correlation IDs, timings and status. They exclude request bodies, bearer tokens, query strings, references and viewer text. Web text is rendered through React text nodes. Payload size, amount, text length and durable rate limits apply at boundaries.
+
+## Google identity and admin roles
+
+Cognito federates Google through separate PKCE clients for web and Android. New application profiles have the user role; only an IAM-authorized operator can bootstrap an admin. Admin reads and writes check the stored actor role, never client claims or request bodies. Ban/deletion state is checked by tenant access, device ingestion, socket publication/replay and speech. Account directory pages use a separate registry partition and return only account metadata. See `google-login-and-admin.md` for limits, deployment values, and release checks.

@@ -1,12 +1,49 @@
 import React, { useEffect, useState } from 'react';
-import { AppState, ScrollView, Text, StyleSheet } from 'react-native';
+import { AppState, ScrollView, Text, StyleSheet, Button } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { account, signIn, signOut } from './auth/session';
+import { WelcomeScreen } from './welcome/WelcomeScreen';
 import { companion, type Diagnostics } from './native';
 import { PairingScreen } from './setup/PairingScreen';
 import { DiagnosticsScreen } from './diagnostics/DiagnosticsScreen';
 export default function App() {
+  const [signedIn, setSignedIn] = useState(false),
+    [busy, setBusy] = useState(true),
+    [error, setError] = useState('');
+  useEffect(() => {
+    void account()
+      .then(() => setSignedIn(true))
+      .catch(() => {})
+      .finally(() => setBusy(false));
+  }, []);
+  const login = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await signIn();
+      setSignedIn(true);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const logout = async () => {
+    setBusy(true);
+    try {
+      await signOut();
+      setSignedIn(false);
+      refresh();
+    } catch {
+      setError('Unable to clear local credentials. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const [diagnostics, setDiagnostics] = useState<Diagnostics>({
     paired: false,
+    creatorId: '',
     notificationAccess: false,
     lastSync: '',
     pending: 0,
@@ -25,25 +62,48 @@ export default function App() {
   };
   useEffect(() => {
     refresh();
-    const sub = AppState.addEventListener('change', refresh);
+    const sub = AppState.addEventListener('change', state => {
+      refresh();
+      if (state === 'active' && signedIn)
+        void account().catch(() => {
+          setSignedIn(false);
+          setError('Sign in again to check your account.');
+        });
+    });
     const timer = setInterval(refresh, 10000);
     return () => {
       sub.remove();
       clearInterval(timer);
     };
-  }, []);
+  }, [signedIn]);
   return (
     <SafeAreaProvider>
       <SafeAreaView style={s.container}>
         <ScrollView contentContainerStyle={s.content}>
           <Text style={s.brand}>TipRelay ↗</Text>
           <Text style={s.subtitle}>Your phone. Your tips. Your stream.</Text>
-          {!diagnostics.paired && <PairingScreen onPaired={refresh} />}
-          <DiagnosticsScreen value={diagnostics} refresh={refresh} />
-          <Text style={s.foot}>
-            PhonePe parser is awaiting real-device release validation. See the
-            supported-format guide before relying on alerts.
-          </Text>
+          {!signedIn ? (
+            <WelcomeScreen
+              onSignIn={() => void login()}
+              busy={busy}
+              error={error}
+            />
+          ) : (
+            <>
+              {!diagnostics.paired && <PairingScreen onPaired={refresh} />}
+              <DiagnosticsScreen value={diagnostics} refresh={refresh} />
+              <Button
+                title="Sign out and disconnect phone"
+                disabled={busy}
+                onPress={() => void logout()}
+              />
+              {!!error && <Text>{error}</Text>}
+              <Text style={s.foot}>
+                PhonePe parser is awaiting real-device release validation. See
+                the supported-format guide before relying on alerts.
+              </Text>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>

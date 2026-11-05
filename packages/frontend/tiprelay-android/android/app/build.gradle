@@ -1,6 +1,13 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+// Read only the four allowlisted public values; signing secrets never enter BuildConfig.
+def configOutput = new ByteArrayOutputStream()
+exec {
+    commandLine "node", file("../../../../../scripts/android-config.mjs").absolutePath
+    standardOutput = configOutput
+}
+def deployment = new groovy.json.JsonSlurper().parseText(configOutput.toString("UTF-8"))
 react {
     reactNativeDir = file("../../../../../node_modules/react-native")
     codegenDir = file("../../../../../node_modules/@react-native/codegen")
@@ -12,12 +19,18 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
     namespace "com.tiprelaycompanion"
+    buildFeatures { buildConfig true }
     defaultConfig {
         applicationId "com.tiprelaycompanion"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
+        manifestPlaceholders = [appAuthRedirectScheme: "com.tiprelaycompanion"]
         versionCode 1
         versionName "0.1.0"
+        buildConfigField "String", "API_URL", groovy.json.JsonOutput.toJson(deployment.apiUrl)
+        buildConfigField "String", "COGNITO_DOMAIN", groovy.json.JsonOutput.toJson(deployment.cognitoDomain)
+        buildConfigField "String", "MOBILE_CLIENT_ID", groovy.json.JsonOutput.toJson(deployment.mobileClientId)
+        buildConfigField "String", "WEB_URL", groovy.json.JsonOutput.toJson(deployment.webUrl)
     }
     signingConfigs {
         release {
@@ -40,6 +53,7 @@ android {
 tasks.configureEach { task ->
     if (task.name == "validateSigningRelease") {
         task.doFirst {
+            if (deployment.stage != "production" || !deployment.apiUrl || !deployment.cognitoDomain || !deployment.mobileClientId || !deployment.webUrl) throw new GradleException("Release builds require production Android environment configuration")
             if (!System.getenv("TIPRELAY_KEYSTORE")) throw new GradleException("Release signing environment variables are required")
         }
     }

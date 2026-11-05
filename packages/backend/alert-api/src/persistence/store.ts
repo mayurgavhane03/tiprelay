@@ -12,6 +12,7 @@ export interface Change {
 export interface Store {
   get(pk: string, sk: string): Promise<Row | undefined>;
   query(pk: string, prefix?: string): Promise<Row[]>;
+  page(pk: string, after?: string): Promise<{ rows: Row[]; next?: string }>;
   transact(changes: Change[]): Promise<void>;
 }
 export class Conflict extends Error {}

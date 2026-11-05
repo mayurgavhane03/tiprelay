@@ -24,7 +24,7 @@ export async function dispatch(service: Service, delivery: Delivery, pk: string,
   if (!row || row.status !== 'pending') return;
   const id = pk.slice('CREATOR#'.length);
   const profile = await service.store.get(pk, 'PROFILE');
-  if (!profile || profile.deleted) {
+  if (!profile || profile.deleted || profile.banned) {
     await service.store.transact([
       next({ ...row, status: 'discarded', gsiPk: undefined, gsiSk: undefined }),
     ]);

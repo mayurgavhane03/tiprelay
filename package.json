@@ -17,7 +17,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "lint": "turbo run lint && eslint scripts *.ts *.mjs",
     "typecheck": "turbo run typecheck && tsc -p tsconfig.scripts.json",
-    "test": "turbo run test",
+    "test": "turbo run test && npm run test:android-config",
     "build": "turbo run build",
     "smoke:alert": "tsx scripts/smoke.ts",
     "cdk": "cdk --app \"npx tsx infrastructure/aws/bin/app.ts\"",
@@ -29,7 +29,12 @@
     "dev:web": "node --env-file-if-exists=.env node_modules/turbo/bin/turbo run dev --filter=@tiprelay/web",
     "dev:api": "node --env-file-if-exists=.env node_modules/turbo/bin/turbo run dev --filter=@tiprelay/alert-api",
     "dev:android": "turbo run dev --filter=@tiprelay/android",
-    "dev:speech": "turbo run dev --filter=@tiprelay/speech-worker"
+    "dev:speech": "turbo run dev --filter=@tiprelay/speech-worker",
+    "admin:role": "tsx scripts/set-admin.ts",
+    "android:apk:debug": "node scripts/android-build.mjs debug",
+    "android:apk:release": "node scripts/android-build.mjs release",
+    "android:bundle:release": "node scripts/android-build.mjs bundle",
+    "test:android-config": "node --test scripts/android-config.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

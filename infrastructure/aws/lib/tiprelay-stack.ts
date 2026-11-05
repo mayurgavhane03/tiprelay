@@ -3,6 +3,8 @@ import {
   Duration,
   RemovalPolicy,
   CfnOutput,
+  CfnParameter,
+  SecretValue,
   type StackProps,
   aws_dynamodb as ddb,
   aws_lambda as lambda,
@@ -17,6 +19,7 @@ import {
   aws_apigatewayv2_integrations as integrations,
   aws_apigatewayv2_authorizers as authorizers,
   aws_iam as iam,
+  aws_ecr as ecr,
   aws_cloudwatch as cw,
   aws_events as events,
   aws_events_targets as targets,
@@ -26,7 +29,17 @@ import {
 import { Construct } from 'constructs';
 import { resolve } from 'node:path';
 export class TipRelayStack extends Stack {
-  constructor(scope: Construct, id: string, props: StackProps & { stage: string }) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: StackProps & {
+      stage: string;
+      speechRepository: ecr.IRepository;
+      speechImageDigest?: string;
+      skipSpeechWorker?: boolean;
+      skipCloudFront?: boolean;
+    },
+  ) {
     super(scope, id, props);
     const table = new ddb.Table(this, 'State', {
       partitionKey: { name: 'pk', type: ddb.AttributeType.STRING },
@@ -62,7 +75,7 @@ export class TipRelayStack extends Stack {
       lifecycleRules: [{ noncurrentVersionExpiration: Duration.days(30) }],
       removalPolicy: RemovalPolicy.RETAIN,
     });
-    const distribution = new cf.Distribution(this, 'WebDistribution', {
+    const distribution = props.skipCloudFront ? undefined : new cf.Distribution(this, 'WebDistribution', {
       defaultRootObject: 'index.html',
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(web),
@@ -103,9 +116,11 @@ export class TipRelayStack extends Stack {
         },
       ],
     });
-    const origin = `https://${distribution.distributionDomainName}`;
+    const origin = distribution
+      ? `https://${distribution.distributionDomainName}`
+      : 'http://localhost:5173';
     const pool = new cognito.UserPool(this, 'Creators', {
-      selfSignUpEnabled: true,
+      selfSignUpEnabled: false,
       signInAliases: { email: true },
       autoVerify: { email: true },
       passwordPolicy: {
@@ -118,17 +133,51 @@ export class TipRelayStack extends Stack {
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: RemovalPolicy.RETAIN,
     });
-    const client = pool.addClient('WebClient', {
-      generateSecret: false,
-      preventUserExistenceErrors: true,
-      oAuth: {
-        flows: { authorizationCodeGrant: true },
-        scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL],
-        callbackUrls: [origin + '/auth/callback'],
-        logoutUrls: [origin],
-      },
-      accessTokenValidity: Duration.minutes(30),
+    const googleClientId = new CfnParameter(this, 'GoogleClientId', {
+      type: 'String',
+      minLength: 1,
     });
+    const googleSecretName = new CfnParameter(this, 'GoogleSecretName', {
+      type: 'String',
+      noEcho: true,
+      description: 'Secrets Manager secret name containing a clientSecret JSON field',
+      minLength: 1,
+    });
+    const google = new cognito.UserPoolIdentityProviderGoogle(this, 'Google', {
+      userPool: pool,
+      clientId: googleClientId.valueAsString,
+      clientSecretValue: SecretValue.secretsManager(googleSecretName.valueAsString, {
+        jsonField: 'clientSecret',
+      }),
+      scopes: ['openid', 'email', 'profile'],
+      attributeMapping: {
+        email: cognito.ProviderAttribute.GOOGLE_EMAIL,
+        fullname: cognito.ProviderAttribute.GOOGLE_NAME,
+      },
+    });
+    const addClient = (name: string, callback: string) => {
+      const result = pool.addClient(name, {
+        generateSecret: false,
+        preventUserExistenceErrors: true,
+        supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.GOOGLE],
+        oAuth: {
+          flows: { authorizationCodeGrant: true },
+          scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE],
+          callbackUrls: [callback],
+          logoutUrls: [origin],
+        },
+        accessTokenValidity: Duration.minutes(15),
+        refreshTokenValidity: Duration.days(7),
+        enableTokenRevocation: true,
+      });
+      (result.node.defaultChild as cognito.CfnUserPoolClient).explicitAuthFlows = [
+        'ALLOW_REFRESH_TOKEN_AUTH',
+      ];
+      result.node.addDependency(google);
+      return result;
+    };
+    const client = addClient('WebClient', origin + '/auth/callback');
+    const mobileClient = addClient('MobileClient', 'com.tiprelaycompanion:/oauth2redirect');
     const domain = pool.addDomain('SignIn', {
       cognitoDomain: { domainPrefix: `tiprelay-${props.stage}-${this.account}-${this.region}` },
     });
@@ -150,8 +199,10 @@ export class TipRelayStack extends Stack {
       TABLE_NAME: table.tableName,
       AUDIO_BUCKET: audio.bucketName,
       SPEECH_QUEUE_URL: queue.queueUrl,
+      SPEECH_ENABLED: props.skipSpeechWorker ? 'false' : 'true',
       USER_POOL_ID: pool.userPoolId,
       USER_POOL_CLIENT_ID: client.userPoolClientId,
+      MOBILE_CLIENT_ID: mobileClient.userPoolClientId,
       WEB_ORIGIN: origin,
     };
     const make = (name: string, handler: string) =>
@@ -232,7 +283,7 @@ export class TipRelayStack extends Stack {
     });
     const integration = new integrations.HttpLambdaIntegration('HttpIntegration', httpFn);
     const auth = new authorizers.HttpUserPoolAuthorizer('CreatorAuth', pool, {
-      userPoolClients: [client],
+      userPoolClients: [client, mobileClient],
     });
     http.addRoutes({
       path: '/v1/dashboard',
@@ -246,39 +297,25 @@ export class TipRelayStack extends Stack {
       integration,
       authorizer: auth,
     });
+    for (const path of ['/v1/account', '/v1/admin/{proxy+}', '/v1/device/pair']) {
+      http.addRoutes({ path, methods: [apigw.HttpMethod.ANY], integration, authorizer: auth });
+    }
+    http.addRoutes({ path: '/health', methods: [apigw.HttpMethod.GET], integration });
     http.addRoutes({ path: '/v1/public/{proxy+}', methods: [apigw.HttpMethod.ANY], integration });
     http.addRoutes({ path: '/v1/device/{proxy+}', methods: [apigw.HttpMethod.POST], integration });
     http.addRoutes({ path: '/v1/overlay/session', methods: [apigw.HttpMethod.POST], integration });
+    for (const path of [
+      '/v1/account',
+      '/v1/dashboard',
+      '/v1/dashboard/{proxy+}',
+      '/v1/admin/{proxy+}',
+      '/v1/device/pair',
+      '/v1/public/{proxy+}',
+    ]) {
+      http.addRoutes({ path, methods: [apigw.HttpMethod.OPTIONS], integration });
+    }
     const httpStage = http.defaultStage!.node.defaultChild as apigw.CfnStage;
     httpStage.defaultRouteSettings = { throttlingBurstLimit: 100, throttlingRateLimit: 50 };
-    const worker = new lambda.DockerImageFunction(this, 'SpeechWorker', {
-      code: lambda.DockerImageCode.fromImageAsset(resolve('packages/backend/speech-worker')),
-      architecture: lambda.Architecture.X86_64,
-      memorySize: 2048,
-      timeout: Duration.seconds(60),
-      reservedConcurrentExecutions: 4,
-      environment: { TABLE_NAME: table.tableName, AUDIO_BUCKET: audio.bucketName },
-      logGroup: new logs.LogGroup(this, 'SpeechLogs', {
-        retention: logs.RetentionDays.TWO_WEEKS,
-        removalPolicy: RemovalPolicy.RETAIN,
-      }),
-    });
-    worker.addEventSource(
-      new sources.SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }),
-    );
-    worker.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'dynamodb:GetItem',
-          'dynamodb:TransactWriteItems',
-          'dynamodb:PutItem',
-          'dynamodb:UpdateItem',
-          'dynamodb:ConditionCheckItem',
-        ],
-        resources: [table.tableArn],
-      }),
-    );
-    audio.grantPut(worker);
     const alarmTopic = new sns.Topic(this, 'OperationalAlerts', { enforceSSL: true });
     const alarm = (name: string, metric: cw.IMetric, threshold: number) =>
       new cw.Alarm(this, name, {
@@ -299,7 +336,39 @@ export class TipRelayStack extends Stack {
       }),
       5,
     );
-    alarm('SpeechErrors', worker.metricErrors({ period: Duration.minutes(5) }), 1);
+    if (!props.skipSpeechWorker) {
+      const worker = new lambda.DockerImageFunction(this, 'SpeechWorker', {
+        code: lambda.DockerImageCode.fromEcr(props.speechRepository, {
+          tagOrDigest: props.speechImageDigest || 'initial',
+        }),
+        architecture: lambda.Architecture.X86_64,
+        memorySize: 2048,
+        timeout: Duration.seconds(60),
+        reservedConcurrentExecutions: 4,
+        environment: { TABLE_NAME: table.tableName, AUDIO_BUCKET: audio.bucketName },
+        logGroup: new logs.LogGroup(this, 'SpeechLogs', {
+          retention: logs.RetentionDays.TWO_WEEKS,
+          removalPolicy: RemovalPolicy.RETAIN,
+        }),
+      });
+      worker.addEventSource(
+        new sources.SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }),
+      );
+      worker.addToRolePolicy(
+        new iam.PolicyStatement({
+          actions: [
+            'dynamodb:GetItem',
+            'dynamodb:TransactWriteItems',
+            'dynamodb:PutItem',
+            'dynamodb:UpdateItem',
+            'dynamodb:ConditionCheckItem',
+          ],
+          resources: [table.tableArn],
+        }),
+      );
+      audio.grantPut(worker);
+      alarm('SpeechErrors', worker.metricErrors({ period: Duration.minutes(5) }), 1);
+    }
     alarm('SpeechDeadLettersAlarm', dlq.metricApproximateNumberOfMessagesVisible(), 1);
     alarm('SpeechBacklogAge', queue.metricApproximateAgeOfOldestMessage(), 60);
     alarm('OutboxFailure', outboxFn.metricErrors(), 1);
@@ -321,12 +390,13 @@ export class TipRelayStack extends Stack {
       SocketUrl: socketStage.url,
       UserPoolId: pool.userPoolId,
       ClientId: client.userPoolClientId,
+      MobileClientId: mobileClient.userPoolClientId,
       CognitoDomain: domain.baseUrl(),
       TableName: table.tableName,
       AudioBucket: audio.bucketName,
       SpeechQueue: queue.queueUrl,
       AlarmTopic: alarmTopic.topicArn,
-      DistributionId: distribution.distributionId,
+      ...(distribution ? { DistributionId: distribution.distributionId } : {}),
     }))
       new CfnOutput(this, name, { value });
   }

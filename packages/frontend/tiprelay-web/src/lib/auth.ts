@@ -8,7 +8,7 @@ const encode = (bytes: Uint8Array) =>
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 export async function login() {
-  if (!domain || !client) throw new Error('Cognito configuration is missing');
+  if (!domain || !client) throw new Error('Google sign-in is not enabled in this preview yet.');
   const verifier = encode(crypto.getRandomValues(new Uint8Array(48))),
     state = encode(crypto.getRandomValues(new Uint8Array(24)));
   sessionStorage.setItem('pkce', verifier);
@@ -19,7 +19,8 @@ export async function login() {
   const query = new URLSearchParams({
     client_id: client,
     response_type: 'code',
-    scope: 'openid email',
+    scope: 'openid email profile',
+    identity_provider: 'Google',
     redirect_uri: location.origin + '/auth/callback',
     state,
     code_challenge: challenge,
@@ -48,10 +49,20 @@ export async function callback() {
   });
   if (!response.ok) throw new Error('Sign-in failed');
   const data = await response.json();
+  if (typeof data.access_token !== 'string' || data.token_type?.toLowerCase() !== 'bearer')
+    throw new Error('Invalid sign-in response');
   sessionStorage.setItem('access_token', data.access_token);
-  location.replace('/');
+  location.replace('/dashboard');
 }
 export function logout() {
   sessionStorage.removeItem('access_token');
-  location.assign('/');
+  sessionStorage.removeItem('local_session');
+  if (domain && client)
+    location.assign(
+      `${domain}/logout?${new URLSearchParams({ client_id: client, logout_uri: location.origin })}`,
+    );
+  else location.assign('/');
 }
+
+export const hasSession = () =>
+  Boolean(accessToken() || (localMode && sessionStorage.getItem('local_session') === 'demo'));

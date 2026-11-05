@@ -125,6 +125,7 @@ const server = createServer(async (req, res) => {
     const result = await route(service, {
       method: req.method || 'GET',
       path: url.pathname,
+      cursor: url.searchParams.get('cursor') || undefined,
       body: raw ? JSON.parse(raw) : undefined,
       token: req.headers.authorization?.replace(/^Bearer /, ''),
       creatorId: config.bypass ? 'demo' : undefined,

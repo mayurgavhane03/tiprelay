@@ -16,7 +16,7 @@ DynamoDB PITR is enabled. Restore into a new table, inspect recovered state, and
 
 Keep the previous web build and stack asset manifest. Roll back the web by uploading the earlier `index.html` and matching hashed assets, then invalidate CloudFront. The web bucket is versioned with 30-day noncurrent-object retention. Roll back Lambda/CDK by deploying the previous reviewed commit and image asset. Preserve schema compatibility until the previous version can no longer be required. This initial release has additive rows and versioned conditional writes, with no destructive migrations.
 
-For a suspected credential leak, revoke the affected phone from Stream setup or rotate the overlay URL. Rotation disables old subscriptions at publication and replay. Replace the Browser Source URL in OBS, verify Test Alert, then pair a fresh phone if needed. Never reuse an exposed code or token. Cognito access tokens expire in 30 minutes; revoke user sessions through Cognito and disable the user for an account compromise.
+For a suspected credential leak, revoke the affected phone from Stream setup or rotate the overlay URL. Rotation disables old subscriptions at publication and replay. Replace the Browser Source URL in OBS, verify Test Alert, then pair a fresh phone if needed. Never reuse an exposed code or token. Cognito access tokens expire in 15 minutes; revoke user sessions through Cognito and disable the user for an account compromise.
 
 ## Creator deletion
 
@@ -41,3 +41,7 @@ Primary costs scale with API requests, Lambda duration/memory, WebSocket connect
 Set AWS Budgets for the approved account and stage, configure a recipient, and load-test expected creator/fan volumes before selecting service limits. The seven-day dashboard query must be assessed for high-volume creators. Add pagination before onboarding traffic that exceeds the measured bound. Keep abuse rate limits, payload caps, API throttles and model/text limits enabled. Actual costs depend on region and traffic; no fixed monthly quote is claimed.
 
 The serverless backend avoids an always-running application server. Lambda charges depend on requests and execution duration, while API Gateway HTTP and WebSocket charges depend on usage, including socket connection time. The resulting savings depend on the workload. Consult [Lambda pricing](https://aws.amazon.com/lambda/pricing/) and [API Gateway pricing](https://aws.amazon.com/api-gateway/pricing/) for the approved region.
+
+## Account moderation
+
+Use the server-authorized `/admin` page to ban, restore, or request deletion of ordinary users. See [Google and admin setup](google-login-and-admin.md) for role bootstrap, transactional role checks, the 90-day audit retention, and full erasure steps. Ban the application account as well as revoking Cognito sessions during an incident; Cognito JWT revocation alone does not invalidate previously issued tokens in offline JWT verification.

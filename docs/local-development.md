@@ -53,7 +53,7 @@ npm run start --workspace @tiprelay/android
 npm run android --workspace @tiprelay/android
 ```
 
-Use `http://127.0.0.1:3001` in the debug companion. Only debug builds permit loopback HTTP. Release builds require HTTPS. Pair in the dashboard, grant notification access, and keep the phone connected for local USB tests. Never expose unauthenticated dashboard endpoints on a LAN to connect a phone.
+The Android welcome screen runs through Metro locally, but Google login and authenticated pairing need a provisioned Cognito/API environment. Configure the public values in root `.env.android.development.local` as described in [Google login setup](google-login-and-admin.md). Use the same Google account on the deployed web dashboard and Android. There is no native fake-login bypass. The local web/API vertical slice remains runnable without AWS through the explicitly labeled demo. Never expose unauthenticated dashboard endpoints on a LAN.
 
 ## Smoke and known constraints
 

@@ -37,4 +37,8 @@ Local automated evidence is recorded separately in `verification.md`. Launch req
 - Review the remaining React Native/CDK toolchain advisories recorded in `dependency-review.md` and update compatible upstream fixes before distribution where available.
 - Complete English voice quality/listening checks. Do not claim Hindi or Hinglish support until evaluated.
 
-No real transfer, physical locked-phone result, OBS recording, cloud deployment or signing check is implied by passing synthetic tests.
+No real transfer, physical locked-phone result, OBS recording, full cloud deployment or signing check is implied by passing synthetic tests. A backend-only development stack is deployed; CloudFront account verification and CodeBuild concurrency remain outstanding.
+
+## Google and administrator acceptance
+
+Follow [Google login and administration](google-login-and-admin.md). Verify Google-only login on both platforms, signed Android callback/refresh/logout, blocked dashboard access before login, default user role, unauthorized admin API denial, ban/restore/delete behavior, operator role revocation, and a real signed APK download. These are outstanding deployment and device checks.
