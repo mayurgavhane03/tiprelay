@@ -15,10 +15,10 @@ export function DiagnosticsScreen({
         <Text style={styles.title}>Notification access</Text>
         <Text style={styles.copy}>
           Android grants access to notifications across your phone. TipRelay
-          processes only recognized incoming-credit formats from PhonePe, on
-          this phone. It uploads an event ID, app ID, amount, time and an
-          optional UPI reference. Raw notification text and payer details stay
-          off our servers.
+          processes only recognized incoming-credit formats from PhonePe and
+          Google Pay, on this phone. It uploads an event ID, app ID, amount,
+          time and an optional UPI reference and payer name for spoken alerts.
+          Raw notification text stays off our servers.
         </Text>
         <Text style={styles.copy}>
           Notification alerts are best-effort. Formats, battery settings and

@@ -2,9 +2,9 @@
 
 `TipRelaySpeechBuildDev` creates a private S3 source bucket, an ECR repository, and a privileged CodeBuild project. The main stack consumes the worker image from ECR. Only the worker's Dockerfile, requirements, voice manifest, download script, synthesis module, and handler are uploaded. No credentials or `.env` files enter the build source.
 
-AWS account 627551519784 currently has a zero Linux/Medium CodeBuild concurrency quota in `ap-south-1`. One build was requested under request ID `b6e813fd56394f829ae8d784397db09ckwJXRfLl`. The first development deployment therefore uses `-c skipSpeechWorker=true`. Message approval is disabled and messages remain pending. Amount and chime alerts remain available. This stage does not pass speech release acceptance.
+On 6 November 2026, the Linux/Medium build quota in `ap-south-1` was confirmed available (15 concurrent builds). The development stack now includes the Piper worker; do not pass `skipSpeechWorker=true` when updating it. The worker uses the Lambda Python 3.12 base and binary-only dependency installation because the older Python 3.11 base could not install the current NumPy wheel. Image tag `notification-20261106` was built remotely and deployed by immutable digest, recorded in `.local/speech-image-digest.txt`. SQS worker concurrency is capped at two to fit the account's ten-concurrent-Lambda quota.
 
-When the quota is approved, use `.local/speech-build-outputs.json` to find the project, source bucket, and ECR repository. Rebuild the six-file ZIP, upload it as `speech-source.zip`, and start the CodeBuild project. The build downloads the pinned voice model, builds linux/amd64, and pushes the image. CodeBuild minutes, ECR storage, and image scanning add AWS costs. The S3 source expires after seven days and ECR retains up to ten images.
+For future builds, use `.local/speech-build-outputs.json` to find the project, source bucket, and ECR repository. Rebuild the six-file ZIP, upload it as `speech-source.zip`, and start the CodeBuild project. The build downloads the pinned voice model, builds linux/amd64, and pushes the image. CodeBuild minutes, ECR storage, and image scanning add AWS costs. The S3 source expires after seven days and ECR retains up to ten images.
 
 ```powershell
 $env:AWS_PROFILE='my-credentials'

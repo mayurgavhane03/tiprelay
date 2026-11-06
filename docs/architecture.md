@@ -64,7 +64,7 @@ Approval and the speech outbox commit together. SQS carries creator/job identifi
 
 ## Privacy and limitations
 
-The Kotlin service reads only the allowlisted package and uploads only the normalized contract. Notification bodies and payer details are never persisted by TipRelay. The app may miss notifications or receive a format without the receiving UPI identity. Use a dedicated creator payment identity and clearly communicate that alerts do not establish settlement. Device credentials can fabricate observations if compromised, making device revocation essential.
+The Kotlin service reads only the allowlisted package and uploads only the normalized contract. Raw notification bodies are never persisted by TipRelay. At the creator’s request, normalized payer names are now included in observations and expiring speech jobs for spoken payment announcements. The app may miss notifications or receive a format without the receiving UPI identity. Use a dedicated creator payment identity and clearly communicate that alerts do not establish settlement. Device credentials can fabricate observations if compromised, making device revocation essential.
 
 Structured logs include event names, request/job correlation IDs, timings and status. They exclude request bodies, bearer tokens, query strings, references and viewer text. Web text is rendered through React text nodes. Payload size, amount, text length and durable rate limits apply at boundaries.
 

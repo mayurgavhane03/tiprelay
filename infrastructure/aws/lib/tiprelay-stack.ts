@@ -75,47 +75,49 @@ export class TipRelayStack extends Stack {
       lifecycleRules: [{ noncurrentVersionExpiration: Duration.days(30) }],
       removalPolicy: RemovalPolicy.RETAIN,
     });
-    const distribution = props.skipCloudFront ? undefined : new cf.Distribution(this, 'WebDistribution', {
-      defaultRootObject: 'index.html',
-      defaultBehavior: {
-        origin: origins.S3BucketOrigin.withOriginAccessControl(web),
-        viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        responseHeadersPolicy: new cf.ResponseHeadersPolicy(this, 'WebHeaders', {
-          securityHeadersBehavior: {
-            contentTypeOptions: { override: true },
-            referrerPolicy: {
-              referrerPolicy: cf.HeadersReferrerPolicy.NO_REFERRER,
-              override: true,
-            },
-            strictTransportSecurity: {
-              accessControlMaxAge: Duration.days(365),
-              includeSubdomains: true,
-              override: true,
-            },
-            frameOptions: { frameOption: cf.HeadersFrameOption.DENY, override: true },
-            contentSecurityPolicy: {
-              contentSecurityPolicy:
-                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.amazonaws.com wss://*.amazonaws.com https://*.amazoncognito.com; media-src 'self' https://*.amazonaws.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
-              override: true,
-            },
+    const distribution = props.skipCloudFront
+      ? undefined
+      : new cf.Distribution(this, 'WebDistribution', {
+          defaultRootObject: 'index.html',
+          defaultBehavior: {
+            origin: origins.S3BucketOrigin.withOriginAccessControl(web),
+            viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            responseHeadersPolicy: new cf.ResponseHeadersPolicy(this, 'WebHeaders', {
+              securityHeadersBehavior: {
+                contentTypeOptions: { override: true },
+                referrerPolicy: {
+                  referrerPolicy: cf.HeadersReferrerPolicy.NO_REFERRER,
+                  override: true,
+                },
+                strictTransportSecurity: {
+                  accessControlMaxAge: Duration.days(365),
+                  includeSubdomains: true,
+                  override: true,
+                },
+                frameOptions: { frameOption: cf.HeadersFrameOption.DENY, override: true },
+                contentSecurityPolicy: {
+                  contentSecurityPolicy:
+                    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.amazonaws.com wss://*.amazonaws.com https://*.amazoncognito.com; media-src 'self' https://*.amazonaws.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+                  override: true,
+                },
+              },
+            }),
           },
-        }),
-      },
-      errorResponses: [
-        {
-          httpStatus: 403,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: Duration.seconds(0),
-        },
-        {
-          httpStatus: 404,
-          responseHttpStatus: 200,
-          responsePagePath: '/index.html',
-          ttl: Duration.seconds(0),
-        },
-      ],
-    });
+          errorResponses: [
+            {
+              httpStatus: 403,
+              responseHttpStatus: 200,
+              responsePagePath: '/index.html',
+              ttl: Duration.seconds(0),
+            },
+            {
+              httpStatus: 404,
+              responseHttpStatus: 200,
+              responsePagePath: '/index.html',
+              ttl: Duration.seconds(0),
+            },
+          ],
+        });
     const origin = distribution
       ? `https://${distribution.distributionDomainName}`
       : 'http://localhost:5173';
@@ -344,7 +346,6 @@ export class TipRelayStack extends Stack {
         architecture: lambda.Architecture.X86_64,
         memorySize: 2048,
         timeout: Duration.seconds(60),
-        reservedConcurrentExecutions: 4,
         environment: { TABLE_NAME: table.tableName, AUDIO_BUCKET: audio.bucketName },
         logGroup: new logs.LogGroup(this, 'SpeechLogs', {
           retention: logs.RetentionDays.TWO_WEEKS,
@@ -352,7 +353,11 @@ export class TipRelayStack extends Stack {
         }),
       });
       worker.addEventSource(
-        new sources.SqsEventSource(queue, { batchSize: 1, reportBatchItemFailures: true }),
+        new sources.SqsEventSource(queue, {
+          batchSize: 1,
+          reportBatchItemFailures: true,
+          maxConcurrency: 2,
+        }),
       );
       worker.addToRolePolicy(
         new iam.PolicyStatement({

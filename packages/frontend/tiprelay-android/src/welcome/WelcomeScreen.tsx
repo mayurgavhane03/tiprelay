@@ -66,7 +66,8 @@ export function WelcomeScreen({
       )}
       <Text style={s.privacy}>
         Your payments stay in your account. Notification access is requested
-        after pairing. Raw notifications and payer details stay on your phone.
+        after pairing. The amount and payer name are uploaded for spoken stream
+        alerts. Raw notifications stay on your phone.
       </Text>
     </View>
   );

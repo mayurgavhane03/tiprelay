@@ -97,7 +97,7 @@ export default function Landing() {
               {
                 icon: Smartphone,
                 title: '02 · Pair your Android',
-                text: 'Link the companion with a one-use code. It observes supported incoming-credit notifications without uploading raw notifications or payer details.',
+                text: 'Link the companion with a one-use code. It observes supported incoming-credit notifications and sends the amount and payer name for spoken alerts; raw notifications stay on the phone.',
               },
               {
                 icon: Radio,

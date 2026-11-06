@@ -26,10 +26,31 @@ def process(creator_id, job_id):
         table.update_item(Key={"pk": pk, "sk": job["sk"]}, UpdateExpression="SET #s=:expired", ConditionExpression="#s <> :ready", ExpressionAttributeNames={"#s": "status"}, ExpressionAttributeValues={":expired": "expired", ":ready": "ready"})
         return
     profile = table.get_item(Key={"pk": pk, "sk": "PROFILE"}, ConsistentRead=True).get("Item")
-    message = table.get_item(Key={"pk": pk, "sk": f"MESSAGE#{job['messageId']}"}, ConsistentRead=True).get("Item")
-    if not profile or profile.get("deleted") or profile.get("banned") or not message or message["status"] != "approved":
+    if not profile or profile.get("deleted") or profile.get("banned"):
         return
-    audio = synthesize(job["text"])
+    if job.get("kind") == "amount":
+        source = table.get_item(Key={"pk": pk, "sk": f"ALERT#{job['sourceAlertId']}"}, ConsistentRead=True).get("Item")
+        if not source or source["alert"]["kind"] not in ("credit", "test"):
+            return
+        amount = int(source["alert"]["amountPaise"])
+        name = job.get("payerName", "")
+        if not isinstance(name, str) or len(name) > 80 or any(not (c.isalnum() or c in " '-") for c in name):
+            return
+        suffix = f" from {name}" if name else ""
+        spoken_amount = f"{amount // 100} rupees"
+        if amount % 100:
+            spoken_amount += f" and {amount % 100} paise"
+        text = f"{spoken_amount} received{suffix}. Thank you for your support."
+        if source["alert"]["kind"] == "test":
+            text = "Test alert. " + text
+        content_check = {"ConditionCheck": {"TableName": table_name, "Key": encoded({"pk": pk, "sk": source["sk"]}), "ConditionExpression": "attribute_exists(pk)"}}
+    else:
+        message = table.get_item(Key={"pk": pk, "sk": f"MESSAGE#{job['messageId']}"}, ConsistentRead=True).get("Item")
+        if not message or message["status"] != "approved":
+            return
+        text = job["text"]
+        content_check = {"ConditionCheck": {"TableName": table_name, "Key": encoded({"pk": pk, "sk": message["sk"]}), "ConditionExpression": "#s = :approved", "ExpressionAttributeNames": {"#s": "status"}, "ExpressionAttributeValues": encoded({":approved": "approved"})}}
+    audio = synthesize(text)
     now = int(time.time())
     if job["expiresAt"] <= now:
         return
@@ -42,7 +63,7 @@ def process(creator_id, job_id):
     try:
         boto3.client("dynamodb").transact_write_items(TransactItems=[
             {"ConditionCheck": {"TableName": table_name, "Key": encoded({"pk": pk, "sk": "PROFILE"}), "ConditionExpression": "deleted = :no AND (attribute_not_exists(banned) OR banned = :no)", "ExpressionAttributeValues": encoded({":no": False})}},
-            {"ConditionCheck": {"TableName": table_name, "Key": encoded({"pk": pk, "sk": message["sk"]}), "ConditionExpression": "#s = :approved", "ExpressionAttributeNames": {"#s": "status"}, "ExpressionAttributeValues": encoded({":approved": "approved"})}},
+            content_check,
             {"Update": {"TableName": table_name, "Key": encoded({"pk": pk, "sk": job["sk"]}), "UpdateExpression": "SET #s=:ready, #v=#v+:one", "ConditionExpression": "#v=:version AND expiresAt>:now", "ExpressionAttributeNames": {"#s": "status", "#v": "version"}, "ExpressionAttributeValues": encoded({":ready": "ready", ":one": 1, ":version": job["version"], ":now": now})}},
             {"Put": {"TableName": table_name, "Item": encoded(alert_row), "ConditionExpression": "attribute_not_exists(pk)"}},
             {"Put": {"TableName": table_name, "Item": encoded(outbox), "ConditionExpression": "attribute_not_exists(pk)"}},

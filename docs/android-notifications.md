@@ -4,7 +4,7 @@ The Android project was scaffolded from React Native 0.81.5 with CLI 20.0.0. The
 
 ## Supported parser scope
 
-Only `com.phonepe.app` is allowlisted. The following **synthetic English fixtures** are covered by Kotlin tests. No payment-app version, handset, Android build or live payment format has yet been certified.
+`com.phonepe.app` and Google Pay (`com.google.android.apps.nbu.paisa.user`) are allowlisted. Google Pay title `Example Supporter paid you ₹100` is covered by a synthetic fixture based on a user screenshot; full on-device capture/upload is still awaiting verification. The following **synthetic English fixtures** are covered by Kotlin tests. No payment-app version, handset, Android build or live payment format has yet been certified.
 
 | Synthetic body                                                                                  | Outcome                         |
 | ----------------------------------------------------------------------------------------------- | ------------------------------- |
@@ -16,13 +16,13 @@ Only `com.phonepe.app` is allowlisted. The following **synthetic English fixture
 | Cashback, refund, failed or pending text                                                        | Ignored                         |
 | Unrelated package, malformed fractional amount, excessive amount                                | Ignored                         |
 
-The grammar also accepts `You have received`, `Rs` and `Rs.` prefixes and `UPI Reference`/`UPI Ref No`. It deliberately rejects unrecognized layouts and languages. Do not describe broad PhonePe support until the physical checklist is completed. Google Pay, Paytm, bank SMS and other packages are not supported in this release.
+The grammar also accepts `You have received`, `Rs` and `Rs.` prefixes and `UPI Reference`/`UPI Ref No`. It deliberately rejects unrecognized layouts and languages. Do not describe broad PhonePe support until the physical checklist is completed. Paytm, bank SMS and other packages are not supported.
 
-The listener uses expanded notification text when available, ignores summary notifications, and does not upload title/body/payer details. It parses on-device. Event IDs derive from the notification instance identity, posting time, amount and optional reference. Updates that change the instance and provide no reference can still create a second observation. This is a documented best-effort limitation, not an amount-deduplication opportunity.
+The listener uses expanded notification text when available, ignores summary notifications, and does not upload raw title/body. It uploads a sanitized payer name (up to 80 characters) for the requested spoken announcement. It parses on-device. Event IDs derive from the notification instance identity, posting time, amount and optional reference. Updates that change the instance and provide no reference can still create a second observation. This is a documented best-effort limitation, not an amount-deduplication opportunity.
 
 ## Reliability and privacy
 
-The service is registered with Android’s `BIND_NOTIFICATION_LISTENER_SERVICE` permission. Capture works without the React Native UI. Pairing tokens are AES-GCM encrypted with a key in Android Keystore and app backup is disabled. The SQLite queue stores only normalized events, keeps stable event IDs on retries and removes payloads after acknowledgement. Pending and acknowledged IDs expire locally after one day.
+The service is registered with Android’s `BIND_NOTIFICATION_LISTENER_SERVICE` permission. Capture works without the React Native UI. Pairing tokens are AES-GCM encrypted with a key in Android Keystore and app backup is disabled. The SQLite queue stores only normalized events, including the payer name, keeps stable event IDs on retries and removes payloads after acknowledgement. Pending and acknowledged IDs expire locally after one day.
 
 WorkManager requires connectivity and applies exponential retry. Reopening the app is not needed for normal upload. Android force-stop, revoked notification access, OEM battery management, offline state, locked-screen notification redaction and app notification changes can interrupt capture. Diagnostics show pairing, notification access, queued count, last successful sync and a generic last error.
 
@@ -58,3 +58,7 @@ Record app package/version, OS build, phone model, notification locale, battery 
 ## Google session and account-owned pairing
 
 The welcome screen explains the product before requesting Google sign-in. Configure the separate Cognito mobile client as described in [Google login setup](google-login-and-admin.md). AppAuth 8.1.0 is pinned to the React Native 0.81-compatible major. Refresh tokens and paired-device tokens use separate Android Keystore namespaces. The server requires the same creator account on the pairing code and Google access token. Sign-out disconnects the local phone and clears pending uploads. Native AppAuth compilation, callback handling, cancellation, restart refresh, account switching, and release signing are still device acceptance checks.
+
+## Spoken payment announcements
+
+Accepted observations and Test Alert now atomically enqueue a Piper amount announcement, independently of the chime. Payment announcements include the normalized payer name when available. Viewer-written messages still require approval. Speech jobs expire after 120 seconds and upload retries reuse the same job. Deploy both the API and rebuilt worker image; a stack deployed with `skipSpeechWorker=true` remains chime-only. See [remote speech build](remote-speech-build.md). Existing notifications are not replayed: test a new payment after installing and pairing.

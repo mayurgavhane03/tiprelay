@@ -100,7 +100,7 @@ export default function App() {
               />
               {!!error && <Text>{error}</Text>}
               <Text style={s.foot}>
-                PhonePe parser is awaiting real-device release validation. See
+                PhonePe and Google Pay parsers are awaiting real-device release validation. See
                 the supported-format guide before relying on alerts.
               </Text>
             </>

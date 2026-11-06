@@ -56,3 +56,13 @@ The updated CDK template also passed `node scripts/check-auth-stack.mjs`, which 
 ## Android environment build setup — 5 November 2026
 
 Android public configuration now comes from stage-specific ignored environment files or CI variables, with four allowlisted values exposed through native BuildConfig. Private signing inputs are loaded separately by the root APK/AAB build wrappers. Four configuration tests verify field exclusion, required production fields, URL validation, and CI loading. Git ignore checks confirmed that development, production, and signing local files are excluded. ESLint and TypeScript checks passed. Native APK validation still requires the Android SDK and signed-device release checks. See `android-environments.md`.
+
+
+## 6 November 2026: GPay capture and payment speech fix
+
+- Added GPay package and title grammar based on the supplied screenshot; five app parser tests pass, including incoming GPay, outgoing rejection and payer-name extraction. A new physical transfer with the updated APK remains unverified.
+- Creator requested amount and payer name from notifications for speech, superseding the original no-payer-upload requirement. App disclosures and normalized contract now reflect this.
+- 32 backend tests and three Python worker tests passed. Backend lint/type checks passed. Android type check and dual ARM preview APK build passed.
+- Development stack updated successfully in account 627551519784, ap-south-1, enabling Piper. CDK synth and diff reviewed before deployment.
+- Isolated synthetic cloud smoke passed: deployed GPay observation API, duplicate retry, WebSocket credit, Piper speech event, signed WAV download (246316 bytes), and unsigned S3 access denied. Temporary creator records were cleaned up. Sample audio is `.local/notification-speech-smoke.wav`.
+- Still required: install the updated APK, confirm pairing/access, send a new low-value GPay payment with phone locked, and record OBS chime plus spoken amount/name. Old notifications are not replayed. Notification names are best-effort observations, not verified payer identities. US English voice pronunciation of Indian names requires listening verification.

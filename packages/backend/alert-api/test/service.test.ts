@@ -37,6 +37,23 @@ async function submit(reference?: string) {
   );
 }
 describe('isolation and credentials', () => {
+  it('accepts GPay and records one amount speech job across upload retries', async () => {
+    const d = await device();
+    const data = {
+      ...observation(),
+      sourceApp: 'com.google.android.apps.nbu.paisa.user',
+      payerName: 'Example Supporter',
+    };
+    const first = await service.observe(d.token, data);
+    await service.observe(d.token, data);
+    const jobs = (await store.query('CREATOR#alice')).filter((r) => r.sk.startsWith('JOB#'));
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].sourceAlertId).toBe(first.alertId);
+    expect(jobs[0].text).toContain('100 rupees received from Example Supporter');
+    expect((await store.query('CREATOR#bob')).filter((r) => r.sk.startsWith('JOB#'))).toHaveLength(
+      0,
+    );
+  });
   it('requires auth for deployed dashboard routes', async () => {
     const r = await route(service, { method: 'GET', path: '/v1/dashboard', ip: 'test' });
     expect(r.status).toBe(401);
@@ -111,7 +128,9 @@ describe('durability, matching and delivery', () => {
     ]);
     expect(results[0].alertId).toBe(results[1].alertId);
     expect(await store.query('CREATOR#alice', 'OBS#')).toHaveLength(1);
-    expect(await store.query('CREATOR#alice', 'OUTBOX#')).toHaveLength(1);
+    expect(
+      (await store.query('CREATOR#alice', 'OUTBOX#')).filter((r) => r.type === 'alert'),
+    ).toHaveLength(1);
   });
   it('deduplicates references across devices and rejects conflicting amounts', async () => {
     const d = await device(),
@@ -141,7 +160,9 @@ describe('durability, matching and delivery', () => {
     const d = await device();
     await service.observe(d.token, observation('123456789012'));
     await submit('123456789012');
-    expect(await store.query('CREATOR#alice', 'JOB#')).toHaveLength(0);
+    expect(
+      (await store.query('CREATOR#alice', 'JOB#')).filter((r) => r.kind !== 'amount'),
+    ).toHaveLength(0);
     expect((await service.dashboard('alice')).messages[0].state).toBe('matched');
   });
   it('requires manual review for ambiguous references', async () => {
@@ -151,7 +172,9 @@ describe('durability, matching and delivery', () => {
     await submit('123456789012');
     await expect(service.moderate('alice', m.messageId, 'approve')).rejects.toThrow();
     await service.moderate('alice', m.messageId, 'approve', o.alertId);
-    expect(await store.query('CREATOR#alice', 'JOB#')).toHaveLength(1);
+    expect(
+      (await store.query('CREATOR#alice', 'JOB#')).filter((r) => r.kind !== 'amount'),
+    ).toHaveLength(1);
   });
   it('rejects amount mismatch and amount-only automatic matching', async () => {
     const d = await device();
@@ -174,7 +197,7 @@ describe('durability, matching and delivery', () => {
       service.moderate('alice', m.messageId, 'approve'),
       service.moderate('alice', m.messageId, 'approve'),
     ]);
-    const jobs = await store.query('CREATOR#alice', 'JOB#');
+    const jobs = (await store.query('CREATOR#alice', 'JOB#')).filter((r) => r.kind !== 'amount');
     expect(jobs).toHaveLength(1);
     await service.speechReady('alice', jobs[0].jobId, 'audio.wav');
     await service.speechReady('alice', jobs[0].jobId, 'audio.wav');

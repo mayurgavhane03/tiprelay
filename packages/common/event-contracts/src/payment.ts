@@ -7,8 +7,15 @@ export const amount = z.number().int().min(100).max(10000000);
 export const observationSchema = z
   .object({
     eventId: z.string().uuid(),
-    sourceApp: z.literal('com.phonepe.app'),
+    sourceApp: z.enum(['com.phonepe.app', 'com.google.android.apps.nbu.paisa.user']),
     amountPaise: amount,
+    payerName: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .regex(/^[\p{L}\p{N} '-]+$/u)
+      .optional(),
     observedAt: z.string().datetime(),
     transactionReference: reference.optional(),
   })

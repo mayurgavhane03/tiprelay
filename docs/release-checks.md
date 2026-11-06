@@ -9,7 +9,7 @@ Local automated evidence is recorded separately in `verification.md`. Launch req
 - Connect OBS, record a clip, lock the phone and put the companion UI in the background. From a consenting tester’s second device, transfer ₹1 to the creator using the supported app. Do this manually.
 - Confirm the phone records a successful sync, the dashboard labels the credit as observed, and OBS shows ₹1 with a chime. Confirm settlement independently in the receiving bank/UPI app.
 - Make a small outgoing payment manually and verify that no TipRelay credit event appears. Test a payment request and an unrelated notification too.
-- If the real notification differs from the fixture grammar, redact it on-device and add a tested parser fixture before declaring the app supported. Never upload payer details or raw notification dumps.
+- If the real notification differs from the fixture grammar, redact it on-device and add a tested parser fixture before declaring the app supported. Never upload raw notification dumps or use real payer details in test fixtures.
 - Repeat while offline then online, after process recreation, after device reboot, under normal battery restrictions, and with revoked notification access. Document gaps and observed latency.
 
 ## OBS and speech
