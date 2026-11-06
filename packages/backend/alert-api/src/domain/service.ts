@@ -627,6 +627,15 @@ export class Service {
       await this.store.transact([next(p), next({ ...job, status: 'ready' }), ...changes]);
     });
   }
+  async verifyPayment(id: string, alertId: string) {
+    return this.retry(async () => {
+      await this.creator(id);
+      const row = await this.store.get(tenant(id), `OBS#${alertId}`);
+      if (!row || row.ttl! <= this.clock()) throw new HttpError(404, 'Payment not found');
+      if (!row.verifiedAt) await this.store.transact([next({ ...row, verifiedAt: this.clock() })]);
+      return { ok: true };
+    });
+  }
   async dashboard(id: string) {
     const profile = await this.provision(id),
       rows = (await this.store.query(tenant(id))).filter((r) => !r.ttl || r.ttl > this.clock());
@@ -655,6 +664,7 @@ export class Service {
           alertId: r.alertId,
           amountPaise: r.amountPaise,
           observedAt: r.observedAt,
+          verifiedAt: r.verifiedAt,
           transactionReference: r.transactionReference,
         })),
       messages: rows

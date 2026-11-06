@@ -262,7 +262,7 @@ export default function Dashboard() {
               <div className="content-grid">
                 <section className="panel">
                   <div className="section-title">
-                    <h3>Recent activity</h3>
+                    <h3>Recent payments</h3>
                     <span className="muted">Last 7 days</span>
                   </div>
                   {observations.length === 0 ? (
@@ -282,16 +282,37 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div className="activity-list">
-                      {[...observations].reverse().map((o: any) => (
-                        <div className="activity-row" key={o.alertId}>
-                          <span className="credit-icon">↙</span>
-                          <div>
-                            <b>Incoming credit observed</b>
-                            <small>{new Date(o.observedAt).toLocaleString()}</small>
+                      {[...observations]
+                        .sort((a, b) => Date.parse(b.observedAt) - Date.parse(a.observedAt))
+                        .map((o: any) => (
+                          <div className="activity-row" key={o.alertId}>
+                            <span className="credit-icon">↙</span>
+                            <div>
+                              <b>{o.verifiedAt ? 'Verified by you' : 'Observed payment'}</b>
+                              <small>{new Date(o.observedAt).toLocaleString()}</small>
+                            </div>
+                            <div>
+                              <strong>{inr(o.amountPaise)}</strong>
+                              {!o.verifiedAt && (
+                                <button
+                                  className="text-button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    act(async () => {
+                                      await api(
+                                        `/v1/dashboard/payments/${o.alertId}/verify`,
+                                        'POST',
+                                        {},
+                                      );
+                                    })
+                                  }
+                                >
+                                  Mark verified
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <strong>{inr(o.amountPaise)}</strong>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                   <div className="panel-foot">

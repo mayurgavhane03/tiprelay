@@ -55,6 +55,8 @@ export async function route(service: Service, request: Request) {
       if (!creatorId) throw new HttpError(401, 'Sign in required');
       await service.rate(`dashboard:${creatorId}`, 180);
       if (method === 'GET' && path === '/v1/dashboard') result = await service.dashboard(creatorId);
+      else if (method === 'POST' && /^\/v1\/dashboard\/payments\/[^/]+\/verify$/.test(path))
+        result = await service.verifyPayment(creatorId, parts[3]);
       else if (method === 'PUT' && path === '/v1/dashboard/settings')
         result = await service.settings(creatorId, body);
       else if (method === 'PUT' && path === '/v1/dashboard/support-goal')
