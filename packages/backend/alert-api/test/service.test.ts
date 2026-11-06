@@ -273,3 +273,53 @@ describe('durability, matching and delivery', () => {
     await expect(service.submit(p.slug, { text: 'hello' }, 'ip')).rejects.toThrow();
   });
 });
+
+it('keeps deduplicated support progress after alert history expires and protects the OBS source', async () => {
+  now = Date.parse('2027-01-31T19:00:00Z') / 1000;
+  const alice = await device();
+  const bob = await device('bob');
+  const { secret } = await service.rotateOverlay('alice');
+  const goal = {
+    title: 'February support',
+    targetPaise: 50000,
+    startDate: '2027-02-01',
+    endDate: '2027-02-28',
+    visible: true,
+    style: {
+      fill: '#22c55e',
+      track: '#283344',
+      text: '#ffffff',
+      background: '#101827',
+      backgroundOpacity: 0,
+      width: 600,
+      height: 20,
+      radius: 12,
+      padding: 12,
+      fontSize: 22,
+      font: 'sans-serif',
+      alignment: 'left',
+      showTitle: true,
+      showAmounts: true,
+      showPercent: true,
+    },
+  };
+  await service.saveSupportGoal('alice', goal);
+  const credit = observation('123456789012');
+  await Promise.all([
+    service.observe(alice.token, credit),
+    service.observe(alice.token, { ...credit, eventId: randomUUID() }),
+  ]);
+  await service.observe(alice.token, { ...observation(), observedAt: '2027-01-31T18:29:59Z' });
+  await service.observe(bob.token, observation());
+  await service.testAlert('alice');
+  now += 8 * 86400;
+  const dashboard = await service.dashboard('alice');
+  expect(dashboard.observations).toHaveLength(0);
+  expect(dashboard.supportGoal).toEqual({ goal, observedPaise: 10000 });
+  const request = { method: 'GET', path: '/v1/overlay/support-goal', token: secret, ip: 'test' };
+  expect((await route(service, request)).body).toEqual(dashboard.supportGoal);
+  await service.saveSupportGoal('alice', { ...goal, visible: false });
+  expect((await route(service, request)).body).toBeNull();
+  await service.rotateOverlay('alice');
+  expect((await route(service, request)).status).toBe(401);
+});

@@ -3,6 +3,9 @@ import {
   observationSchema,
   messageSchema,
   settingsSchema,
+  supportDate,
+  supportGoalSchema,
+  type SupportGoal,
   type Alert,
 } from '@tiprelay/event-contracts';
 import { Conflict, insert, next, type Store, type Row, type Change } from '../persistence/store';
@@ -129,6 +132,7 @@ export class Service {
       if (action === 'delete') {
         updated.displayName = 'Deleted';
         updated.upiId = '';
+        delete updated.supportGoal;
       }
       await this.store.transact([
         next(actor),
@@ -179,6 +183,33 @@ export class Service {
           : insert({ pk, sk: 'COUNT', count: 1, ttl: now + seconds * 2 }),
       ]);
     });
+  }
+  async saveSupportGoal(id: string, body: unknown) {
+    const result = supportGoalSchema.safeParse(body);
+    if (!result.success) throw new HttpError(400, result.error.issues[0].message);
+    await this.retry(async () => {
+      const profile = await this.creator(id);
+      await this.store.transact([next({ ...profile, supportGoal: result.data })]);
+    });
+    return { ok: true };
+  }
+  private goalProgress(goal: SupportGoal | undefined, rows: Row[]) {
+    if (!goal) return null;
+    const observedPaise = rows.reduce((sum, row) => {
+      const day = row.sk.slice('SUPPORT#'.length);
+      return row.sk.startsWith('SUPPORT#') && day >= goal.startDate && day <= goal.endDate
+        ? sum + row.amountPaise
+        : sum;
+    }, 0);
+    return { goal, observedPaise };
+  }
+  async overlayGoal(token: string) {
+    const cred = await this.overlay(token);
+    const profile = await this.creator(cred.creatorId);
+    if (profile.overlayVersion !== cred.overlayVersion)
+      throw new HttpError(401, 'Overlay credential rotated');
+    if (!profile.supportGoal?.visible) return null;
+    return this.goalProgress(profile.supportGoal, await this.store.query(profile.pk, 'SUPPORT#'));
   }
   async pairCode(id: string) {
     await this.creator(id);
@@ -377,9 +408,14 @@ export class Service {
         amountPaise: data.amountPaise,
       };
       const diag = await this.store.get(pk, `DEVICE#${device.deviceId}`);
+      const supportKey = `SUPPORT#${supportDate(Date.parse(data.observedAt))}`;
+      const daily = await this.store.get(pk, supportKey);
       const changes = [
         next(device),
         next(profile),
+        daily
+          ? next({ ...daily, amountPaise: daily.amountPaise + data.amountPaise })
+          : insert({ pk, sk: supportKey, amountPaise: data.amountPaise }),
         insert({ pk, sk: eventKey, alertId: alert.alertId, ttl: now + retention }),
         insert({
           pk,
@@ -612,6 +648,7 @@ export class Service {
       connections: rows.filter(
         (r) => r.sk.startsWith('CONNECTION#') && r.overlayVersion === profile.overlayVersion,
       ).length,
+      supportGoal: this.goalProgress(profile.supportGoal, rows),
       observations: rows
         .filter((r) => r.sk.startsWith('OBS#'))
         .map((r) => ({
@@ -641,6 +678,7 @@ export class Service {
   async deleteCreator(id: string) {
     await this.retry(async () => {
       const p = await this.creator(id);
+      delete p.supportGoal;
       await this.store.transact([
         next({
           ...p,

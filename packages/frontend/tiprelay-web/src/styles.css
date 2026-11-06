@@ -1213,3 +1213,78 @@ html.overlay-document #root {
     padding: 20px;
   }
 }
+
+.support-goal form {
+  display: grid;
+  gap: 16px;
+}
+
+.support-goal form > button {
+  justify-self: start;
+}
+
+.goal-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 12px;
+}
+
+.goal-fields select {
+  width: 100%;
+  padding: 10px;
+  font: inherit;
+}
+
+.goal-fields input[type='color'] {
+  min-height: 42px;
+  padding: 4px;
+}
+
+.goal-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.goal-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.goal-toggles input {
+  width: auto;
+  margin: 0;
+}
+
+.goal-preview {
+  padding: 8px;
+  border-radius: 8px;
+  background: repeating-conic-gradient(#394153 0% 25%, #292f3b 0% 50%) 50% / 20px 20px;
+}
+
+.goal-bar-labels {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.goal-bar-amount {
+  grid-column: 1;
+  grid-row: 1;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-bar-title {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.goal-bar-percent {
+  grid-column: 3;
+  grid-row: 1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

@@ -32,7 +32,10 @@ export async function route(service: Service, request: Request) {
       result = await service.pair(code, creatorId);
     } else if (method === 'POST' && path === '/v1/device/payment-observations')
       result = await service.observe(token || '', body);
-    else if (method === 'POST' && path === '/v1/overlay/session') {
+    else if (method === 'GET' && path === '/v1/overlay/support-goal') {
+      await service.rate(`overlay-ip:${ip}`, 120);
+      result = await service.overlayGoal(token || '');
+    } else if (method === 'POST' && path === '/v1/overlay/session') {
       await service.rate(`overlay-ip:${ip}`, 120);
       result = await service.ticket(token || '');
     } else if (path === '/v1/account') {
@@ -54,6 +57,8 @@ export async function route(service: Service, request: Request) {
       if (method === 'GET' && path === '/v1/dashboard') result = await service.dashboard(creatorId);
       else if (method === 'PUT' && path === '/v1/dashboard/settings')
         result = await service.settings(creatorId, body);
+      else if (method === 'PUT' && path === '/v1/dashboard/support-goal')
+        result = await service.saveSupportGoal(creatorId, body);
       else if (method === 'POST' && path === '/v1/dashboard/pairing-code')
         result = await service.pairCode(creatorId);
       else if (method === 'POST' && path === '/v1/dashboard/overlay/rotate')

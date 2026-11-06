@@ -7,6 +7,8 @@ import './styles.css';
 const Dashboard = lazy(() => import('./dashboard/Dashboard'));
 const AdminDashboard = lazy(() => import('./admin/AdminDashboard'));
 const Overlay = lazy(() => import('./stream-overlay/Overlay'));
+const GoalOverlay = lazy(() => import('./stream-overlay/GoalOverlay'));
+const isGoalOverlay = location.pathname === '/overlay/goal';
 const TipPage = lazy(() => import('./tip-page/TipPage'));
 function AccountGate() {
   const [account, setAccount] = useState<{ role: string }>(),
@@ -53,6 +55,7 @@ function App() {
     if (location.pathname === '/auth/callback') void callback().catch((e) => setError(e.message));
   }, []);
   if (location.pathname === '/overlay') return <Overlay />;
+  if (isGoalOverlay) return <GoalOverlay />;
   if (location.pathname.startsWith('/tip/'))
     return <TipPage slug={location.pathname.split('/')[2]} />;
   if (location.pathname === '/auth/callback')
@@ -74,9 +77,14 @@ if (import.meta.env.DEV && location.hostname === '127.0.0.1') {
     `http://localhost:${location.port}${location.pathname}${location.search}${location.hash}`,
   );
 } else {
+  if (isGoalOverlay) document.documentElement.classList.add('overlay-document');
   createRoot(document.getElementById('root')!).render(
     <Suspense
-      fallback={location.pathname === '/overlay' ? null : <div className="loading">TipRelay</div>}
+      fallback={
+        location.pathname === '/overlay' || isGoalOverlay ? null : (
+          <div className="loading">TipRelay</div>
+        )
+      }
     >
       <App />
     </Suspense>,

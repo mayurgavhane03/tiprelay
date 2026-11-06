@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { api, inr } from '../lib/api';
 import { localMode, logout } from '../lib/auth';
-type Page = 'overview' | 'setup' | 'messages';
+import SupportGoalEditor from './SupportGoalEditor';
+type Page = 'overview' | 'setup' | 'messages' | 'goal';
 export default function Dashboard() {
   const [data, setData] = useState<any>(),
     [page, setPage] = useState<Page>('overview'),
@@ -73,6 +74,7 @@ export default function Dashboard() {
     observations = data?.observations || [];
   const total = observations.reduce((sum: number, o: any) => sum + o.amountPaise, 0),
     connected = data?.connections > 0;
+  const goalOverlay = overlay.replace('/overlay#', '/overlay/goal#');
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -97,6 +99,10 @@ export default function Dashboard() {
           >
             <AudioLines size={18} />
             Message review <span className="count">{pending.length}</span>
+          </button>
+          <button className={page === 'goal' ? 'active' : ''} onClick={() => setPage('goal')}>
+            <Activity size={18} />
+            Support goal
           </button>
           <button className={page === 'setup' ? 'active' : ''} onClick={() => setPage('setup')}>
             <Settings size={18} />
@@ -133,7 +139,9 @@ export default function Dashboard() {
                 ? 'Overview'
                 : page === 'setup'
                   ? 'Stream setup'
-                  : 'Message review'}
+                  : page === 'goal'
+                    ? 'Support goal'
+                    : 'Message review'}
             </span>
           </span>
           <span className="environment">
@@ -153,14 +161,18 @@ export default function Dashboard() {
                   ? 'Make every tip a moment.'
                   : page === 'setup'
                     ? 'Let’s connect your stream.'
-                    : 'Give good words a voice.'}
+                    : page === 'goal'
+                      ? 'Set your support target.'
+                      : 'Give good words a voice.'}
               </h1>
               <p>
                 {page === 'overview'
                   ? 'Your tips, messages, and stream connection. All in one place.'
                   : page === 'setup'
                     ? 'Three connections. One seamless on-stream experience.'
-                    : 'Review supporter messages before they are read aloud on stream.'}
+                    : page === 'goal'
+                      ? 'Choose an amount in rupees and preview how it looks in OBS.'
+                      : 'Review supporter messages before they are read aloud on stream.'}
               </p>
             </div>
             <button className="button primary" disabled={busy} onClick={test}>
@@ -346,6 +358,9 @@ export default function Dashboard() {
               </div>
             </>
           )}
+          {page === 'goal' && data && (
+            <SupportGoalEditor saved={data.supportGoal} busy={busy} act={act} />
+          )}
           {page === 'setup' && (
             <div className="setup-grid">
               <section className="panel setup-card">
@@ -465,6 +480,24 @@ export default function Dashboard() {
                       </button>
                       <a className="button outline" href={overlay} target="_blank" rel="noreferrer">
                         Open preview ↗
+                      </a>
+                    </div>
+                    <label>
+                      Support goal Browser Source URL
+                      <input readOnly value={goalOverlay} />
+                    </label>
+                    <div className="button-row">
+                      <button className="button dark" onClick={() => copy(goalOverlay)}>
+                        <Copy size={15} />
+                        Copy goal URL
+                      </button>
+                      <a
+                        className="button outline"
+                        href={goalOverlay}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Preview goal ↗
                       </a>
                     </div>
                   </>
