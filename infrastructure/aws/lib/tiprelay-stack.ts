@@ -306,11 +306,9 @@ export class TipRelayStack extends Stack {
     http.addRoutes({ path: '/v1/public/{proxy+}', methods: [apigw.HttpMethod.ANY], integration });
     http.addRoutes({ path: '/v1/device/{proxy+}', methods: [apigw.HttpMethod.POST], integration });
     http.addRoutes({ path: '/v1/overlay/session', methods: [apigw.HttpMethod.POST], integration });
-    http.addRoutes({
-      path: '/v1/overlay/support-goal',
-      methods: [apigw.HttpMethod.GET],
-      integration,
-    });
+    for (const path of ['/v1/overlay/support-goal', '/v1/overlay/alert-controls']) {
+      http.addRoutes({ path, methods: [apigw.HttpMethod.GET], integration });
+    }
     for (const path of [
       '/v1/account',
       '/v1/dashboard',

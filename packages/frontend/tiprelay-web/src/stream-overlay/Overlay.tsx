@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
-import { alertSchema, type Alert } from '@tiprelay/event-contracts';
+import {
+  alertSchema,
+  defaultAlertControls,
+  type AlertControls,
+  type Alert,
+} from '@tiprelay/event-contracts';
 import { api, wsBase, inr } from '../lib/api';
 import { AlertGate, playAudio } from './player';
 export default function Overlay() {
@@ -19,14 +24,38 @@ export default function Overlay() {
       attempt = 0;
     let creditTail = Promise.resolve(),
       speechTail = Promise.resolve();
+    let controls = defaultAlertControls;
+    let speech = new AbortController();
+    let credit = new AbortController();
+    const refreshControls = async () => {
+      const updated = await api<AlertControls>(
+        '/v1/overlay/alert-controls',
+        'GET',
+        undefined,
+        secret,
+      );
+      if (disposed) return;
+      controls = updated;
+      if (controls.paused) {
+        credit.abort();
+        setCurrent(null);
+      }
+      if (controls.paused || controls.muteSpeech) speech.abort();
+    };
+    const allowed = (alert: Alert) =>
+      !disposed &&
+      !controls.paused &&
+      (alert.kind !== 'speech' || !controls.muteSpeech) &&
+      (alert.amountPaise ?? 0) >= controls.minimumPaise;
     const gate = new AlertGate(localStorage, 'tiprelay-seen:' + secret.slice(0, 12));
     const receive = (alert: Alert) => {
-      if (!gate.accept(alert)) return;
+      if (!gate.accept(alert) || !allowed(alert)) return;
       if (alert.kind === 'speech') {
         speechTail = speechTail
           .then(async () => {
-            if (alert.audioUrl && alert.expiresAt > Date.now() / 1000)
-              await playAudio(alert.audioUrl, alert.expiresAt);
+            if (!allowed(alert) || !alert.audioUrl) return;
+            speech = new AbortController();
+            await playAudio(alert.audioUrl, alert.expiresAt, controls.volume, speech.signal);
           })
           .catch(() => {
             /* Chime has its own queue. */
@@ -34,14 +63,18 @@ export default function Overlay() {
       } else {
         creditTail = creditTail
           .then(async () => {
-            if (disposed || alert.expiresAt <= Date.now() / 1000) return;
+            if (!allowed(alert) || alert.expiresAt <= Date.now() / 1000) return;
+            credit = new AbortController();
             setCurrent(alert);
+            const display = new Promise((resolve) =>
+              setTimeout(resolve, controls.displaySeconds * 1000),
+            );
             try {
-              await playAudio('/chime.wav', alert.expiresAt);
+              await playAudio('/chime.wav', alert.expiresAt, controls.volume, credit.signal);
             } catch {
               setError('Audio blocked. Enable Browser Source audio in OBS.');
             }
-            await new Promise((r) => setTimeout(r, 3500));
+            await display;
             setCurrent(null);
           })
           .catch(() => {});
@@ -49,6 +82,8 @@ export default function Overlay() {
     };
     const connect = async () => {
       try {
+        await refreshControls();
+        if (disposed) return;
         const { ticket } = await api<{ ticket: string }>('/v1/overlay/session', 'POST', {}, secret);
         if (disposed) return;
         ws = new WebSocket(`${wsBase}?ticket=${encodeURIComponent(ticket)}`);
@@ -84,9 +119,13 @@ export default function Overlay() {
           Math.min(30000, 1000 * 2 ** Math.min(attempt++, 5)) + Math.random() * 700,
         );
     };
+    const settingsPoll = setInterval(() => refreshControls().catch(() => {}), 5000);
     void connect();
     return () => {
       disposed = true;
+      clearInterval(settingsPoll);
+      credit.abort();
+      speech.abort();
       clearTimeout(retryTimer);
       clearInterval(heartbeat);
       ws?.close();

@@ -58,6 +58,8 @@ def process(creator_id, job_id):
     boto3.client("s3").put_object(Bucket=os.environ["AUDIO_BUCKET"], Key=key, Body=audio, ContentType="audio/wav", ServerSideEncryption="AES256")
     alert_id = f"speech-{job_id}"
     alert = {"alertId": alert_id, "kind": "speech", "createdAt": now, "expiresAt": job["expiresAt"]}
+    if "amountPaise" in job:
+        alert["amountPaise"] = job["amountPaise"]
     alert_row = {"pk": pk, "sk": f"ALERT#{alert_id}", "version": 1, "alert": alert, "audioKey": key, "ttl": now + 604800}
     outbox = {"pk": pk, "sk": f"OUTBOX#{alert_id}", "version": 1, "type": "alert", "alertId": alert_id, "status": "pending", "createdAt": now, "ttl": now + 604800, "gsiPk": "OUTBOX", "gsiSk": f"{now}#{creator_id}#{alert_id}"}
     try:

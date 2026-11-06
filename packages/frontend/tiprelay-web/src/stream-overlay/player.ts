@@ -28,23 +28,26 @@ export class AlertGate {
     return true;
   }
 }
-export async function playAudio(url: string, deadline: number) {
-  if (Date.now() / 1000 >= deadline) return;
+export async function playAudio(url: string, deadline: number, volume = 100, signal?: AbortSignal) {
+  if (signal?.aborted || Date.now() / 1000 >= deadline) return;
   const audio = new Audio(url);
+  audio.volume = volume / 100;
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(
       () => {
-        audio.pause();
-        reject(new Error('Audio deadline exceeded'));
+        finish(new Error('Audio deadline exceeded'));
       },
       Math.min(30000, Math.max(0, (deadline - Date.now() / 1000) * 1000)),
     );
     const finish = (error?: unknown) => {
       clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
       audio.pause();
       if (error) reject(error);
       else resolve();
     };
+    const abort = () => finish();
+    signal?.addEventListener('abort', abort, { once: true });
     audio.onended = () => finish();
     audio.onerror = () => finish(new Error('Audio unavailable'));
     audio.play().catch(finish);

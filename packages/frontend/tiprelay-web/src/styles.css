@@ -1288,3 +1288,46 @@ html.overlay-document #root {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.alert-controls {
+  margin-bottom: 22px;
+}
+.alert-controls form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 18px;
+  margin-top: 16px;
+}
+.alert-controls form > label {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0;
+}
+.alert-controls form > .alert-toggle {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+}
+.alert-controls input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #477c5d;
+}
+.alert-controls input[type='range'] {
+  padding: 0;
+  accent-color: #477c5d;
+}
+.alert-controls form > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+@media (max-width: 640px) {
+  .alert-controls form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

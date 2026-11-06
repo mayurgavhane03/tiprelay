@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { api, inr } from '../lib/api';
 import { localMode, logout } from '../lib/auth';
+import AlertControlsEditor from './AlertControlsEditor';
 import SupportGoalEditor from './SupportGoalEditor';
 type Page = 'overview' | 'setup' | 'messages' | 'goal';
 export default function Dashboard() {
@@ -189,6 +190,9 @@ export default function Dashboard() {
             <div role="status" className="notice">
               {notice}
             </div>
+          )}
+          {page === 'overview' && data?.alertControls && (
+            <AlertControlsEditor saved={data.alertControls} busy={busy} act={act} />
           )}
           {page === 'overview' && (
             <>

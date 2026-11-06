@@ -1,3 +1,4 @@
+import { alertControlsSchema, defaultAlertControls } from '@tiprelay/event-contracts';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   observationSchema,
@@ -183,6 +184,22 @@ export class Service {
           : insert({ pk, sk: 'COUNT', count: 1, ttl: now + seconds * 2 }),
       ]);
     });
+  }
+  async saveAlertControls(id: string, body: unknown) {
+    const parsed = alertControlsSchema.safeParse(body);
+    if (!parsed.success) throw new HttpError(400, 'Invalid alert controls');
+    await this.retry(async () => {
+      const profile = await this.creator(id);
+      await this.store.transact([next({ ...profile, alertControls: parsed.data })]);
+    });
+    return { ok: true };
+  }
+  async overlayAlertControls(token: string) {
+    const credential = await this.overlay(token);
+    const profile = await this.creator(credential.creatorId);
+    if (profile.overlayVersion !== credential.overlayVersion)
+      throw new HttpError(401, 'Overlay credential rotated');
+    return profile.alertControls ?? defaultAlertControls;
   }
   async saveSupportGoal(id: string, body: unknown) {
     const result = supportGoalSchema.safeParse(body);
@@ -472,6 +489,7 @@ export class Service {
         jobId,
         sourceAlertId: alert.alertId,
         kind: 'amount',
+        amountPaise,
         ...(payerName ? { payerName } : {}),
         status: 'pending',
         text: `${alert.kind === 'test' ? 'Test alert. ' : ''}${spokenAmount} received${payerName ? ` from ${payerName}` : ''}. Thank you for your support.`,
@@ -591,6 +609,7 @@ export class Service {
           sk: `JOB#${jobId}`,
           jobId,
           messageId,
+          amountPaise: observation.amountPaise,
           status: 'pending',
           text: m.text,
           expiresAt: now + 120,
@@ -619,6 +638,7 @@ export class Service {
       const alert: Alert = {
         alertId: `speech-${jobId}`,
         kind: 'speech',
+        ...(job.amountPaise !== undefined ? { amountPaise: job.amountPaise } : {}),
         createdAt: this.clock(),
         expiresAt: job.expiresAt,
       };
@@ -657,6 +677,7 @@ export class Service {
       connections: rows.filter(
         (r) => r.sk.startsWith('CONNECTION#') && r.overlayVersion === profile.overlayVersion,
       ).length,
+      alertControls: profile.alertControls ?? defaultAlertControls,
       supportGoal: this.goalProgress(profile.supportGoal, rows),
       observations: rows
         .filter((r) => r.sk.startsWith('OBS#'))
