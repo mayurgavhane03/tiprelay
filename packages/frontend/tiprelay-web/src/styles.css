@@ -934,11 +934,21 @@ label small {
 .overlay-body {
   background: transparent !important;
 }
+html.overlay-document,
+html.overlay-document body,
+html.overlay-document #root {
+  background: transparent !important;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
 .overlay-stage {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  background: transparent;
 }
 .live-alert {
   display: flex;

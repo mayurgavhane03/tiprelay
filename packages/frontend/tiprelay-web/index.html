@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
+    <script>
+      if (location.pathname === '/overlay')
+        document.documentElement.classList.add('overlay-document');
+    </script>
+    <style>
+      html.overlay-document,
+      html.overlay-document body,
+      html.overlay-document #root {
+        background: transparent !important;
+      }
+    </style>
     <title>TipRelay · Your stream, supported</title>
   </head>
   <body>

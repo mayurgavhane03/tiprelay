@@ -105,7 +105,9 @@ export default function Overlay() {
           </div>
         </div>
       )}
-      {error && <small className="overlay-error">{error}</small>}
+      {error && new URLSearchParams(location.search).get('debug') === '1' && (
+        <small className="overlay-error">{error}</small>
+      )}
     </div>
   );
 }

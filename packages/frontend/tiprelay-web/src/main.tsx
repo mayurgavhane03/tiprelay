@@ -70,10 +70,14 @@ function App() {
   return <AccountGate />;
 }
 if (import.meta.env.DEV && location.hostname === '127.0.0.1') {
-  location.replace(`http://localhost:${location.port}${location.pathname}${location.search}${location.hash}`);
+  location.replace(
+    `http://localhost:${location.port}${location.pathname}${location.search}${location.hash}`,
+  );
 } else {
   createRoot(document.getElementById('root')!).render(
-    <Suspense fallback={<div className="loading">TipRelay</div>}>
+    <Suspense
+      fallback={location.pathname === '/overlay' ? null : <div className="loading">TipRelay</div>}
+    >
       <App />
     </Suspense>,
   );
