@@ -32,6 +32,7 @@
     "dev:speech": "turbo run dev --filter=@tiprelay/speech-worker",
     "admin:role": "tsx scripts/set-admin.ts",
     "android:apk:debug": "node scripts/android-build.mjs debug",
+    "android:apk:preview": "node scripts/android-build.mjs preview",
     "android:apk:release": "node scripts/android-build.mjs release",
     "android:bundle:release": "node scripts/android-build.mjs bundle",
     "test:android-config": "node --test scripts/android-config.test.mjs"

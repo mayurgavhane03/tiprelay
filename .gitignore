@@ -9,6 +9,7 @@ __pycache__/
 *.pyc
 coverage/
 .turbo/
+.expo/
 *.jks
 *.keystore
 local.properties

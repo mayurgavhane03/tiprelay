@@ -5,8 +5,8 @@ import { spawnSync } from 'node:child_process';
 import { root, loadConfig } from './android-config.mjs';
 
 const release = ['release', 'bundle'].includes(process.argv[2]);
-if (!['debug', 'release', 'bundle'].includes(process.argv[2]))
-  throw new Error('Use debug, release or bundle');
+if (!['debug', 'preview', 'release', 'bundle'].includes(process.argv[2]))
+  throw new Error('Use debug, preview, release or bundle');
 const stage = release ? 'production' : 'development';
 loadConfig(stage); // Validate before invoking Gradle. Never print configuration or secrets.
 const sdk = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
@@ -20,6 +20,8 @@ if (
   );
 }
 const env = { ...process.env, TIPRELAY_ANDROID_STAGE: stage };
+// Gradle passes the entry path relative to the Android workspace.
+env.EXPO_NO_METRO_WORKSPACE_ROOT = '1';
 if (release) {
   const path = resolve(root, '.env.android.signing.local');
   const signing = existsSync(path) ? parseEnv(readFileSync(path, 'utf8')) : {};
@@ -37,7 +39,7 @@ if (release) {
 }
 const result = spawnSync(
   process.platform === 'win32' ? 'gradlew.bat' : './gradlew',
-  [process.argv[2] === 'bundle' ? 'bundleRelease' : release ? 'assembleRelease' : 'assembleDebug'],
+  [{ debug: 'assembleDebug', preview: 'assemblePreview', release: 'assembleRelease', bundle: 'bundleRelease' }[process.argv[2]]],
   {
     cwd: resolve(root, 'packages/frontend/tiprelay-android/android'),
     env,

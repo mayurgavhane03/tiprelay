@@ -90,6 +90,7 @@ export default function App() {
             />
           ) : (
             <>
+              <Text accessibilityRole="header" style={s.dashboard}>Creator dashboard</Text>
               {!diagnostics.paired && <PairingScreen onPaired={refresh} />}
               <DiagnosticsScreen value={diagnostics} refresh={refresh} />
               <Button
@@ -114,5 +115,6 @@ const s = StyleSheet.create({
   content: { padding: 24 },
   brand: { fontSize: 32, fontWeight: '800', color: '#3e6547', marginTop: 20 },
   subtitle: { fontSize: 14, color: '#87977d', marginTop: 10, marginBottom: 30 },
+  dashboard: { fontSize: 23, fontWeight: '700', color: '#294832', marginBottom: 16 },
   foot: { fontSize: 12, color: '#8c977f', lineHeight: 20, marginBottom: 20 },
 });

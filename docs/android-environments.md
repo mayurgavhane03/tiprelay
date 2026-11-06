@@ -2,6 +2,34 @@
 
 Run commands from the repository root. No manual edits to Android TypeScript or Kotlin are needed when deployment URLs change.
 
+## Windows setup without Android Studio
+
+Android Studio is optional. The Android companion contains Kotlin code for notification observation, so native Android build tools are still required even though the user interface uses React Native. Install a JDK (JDK 17 is the tested version) and Google's Windows **Command line tools only** package. The SDK can live on a secondary drive, which is useful when the system drive has limited space.
+
+The command-line tools ZIP must be laid out so that `sdkmanager.bat` is at `D:\Android\Sdk\cmdline-tools\latest\bin\sdkmanager.bat`. If the ZIP was extracted to `D:\downloads\commandlinetools-win-...\cmdline-tools`, either move it into that layout or use that extracted parent folder as `ANDROID_HOME` in the commands below.
+
+In Git Bash, substitute the paths for the actual JDK and SDK locations. Set `GRADLE_USER_HOME` to the secondary drive as well because Gradle downloads build dependencies.
+
+```bash
+export JAVA_HOME='C:\Program Files\Java\jdk-17'
+export PATH="$JAVA_HOME/bin:$PATH"
+export ANDROID_HOME='D:\Android\Sdk'
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export GRADLE_USER_HOME='D:\GradleCache'
+
+java -version
+"/d/Android/Sdk/cmdline-tools/latest/bin/sdkmanager.bat" \
+  --sdk_root="$ANDROID_HOME" \
+  "platform-tools" "platforms;android-36" \
+  "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.31.6"
+"/d/Android/Sdk/cmdline-tools/latest/bin/sdkmanager.bat" \
+  --sdk_root="$ANDROID_HOME" --licenses
+
+npm run android:apk:debug
+```
+
+The current build machine may have JDK 21 rather than 17. Set `JAVA_HOME` to its installed folder if that is all that is available; install JDK 17 if Gradle reports an unsupported Java version. The debug APK is written to `packages/frontend/tiprelay-android/android/app/build/outputs/apk/debug/app-debug.apk`. Move the repository to the secondary drive too if its `android/app/build` output would otherwise fill the system drive.
+
 ## Development
 
 ```powershell
@@ -43,7 +71,7 @@ Outputs:
 - APK: `packages/frontend/tiprelay-android/android/app/build/outputs/apk/release/app-release.apk`
 - Bundle: `packages/frontend/tiprelay-android/android/app/build/outputs/bundle/release/app-release.aab`
 
-The native build still requires JDK 17, Android SDK 36, Build Tools 36.0.0 and NDK 27.1.12297006. See `android-notifications.md` for signing verification and distribution acceptance.
+The native build still requires JDK 17, Android SDK 36, Build Tools 36.0.0, NDK 27.1.12297006 and CMake 3.31.6. See `android-notifications.md` for signing verification and distribution acceptance.
 
 ## CI and native builds
 

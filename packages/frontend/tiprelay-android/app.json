@@ -1,4 +1,9 @@
 {
-  "name": "TipRelayCompanion",
-  "displayName": "TipRelayCompanion"
+  "expo": {
+    "name": "TipRelay Companion",
+    "slug": "tiprelay-companion",
+    "scheme": "tiprelay-dev",
+    "platforms": ["android"],
+    "android": { "package": "com.tiprelaycompanion" }
+  }
 }
