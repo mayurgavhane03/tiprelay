@@ -16,7 +16,14 @@ export async function handler(event: any) {
     let oldest = 0;
     for (const row of result.Items || []) {
       oldest = Math.max(oldest, service.clock() - row.createdAt);
-      await dispatch(service, delivery, row.pk, row.sk);
+      try {
+        await dispatch(service, delivery, row.pk, row.sk);
+      } catch {
+        console.error(JSON.stringify({
+          event: 'outbox_dispatch_failed',
+          correlationId: event.id,
+        }));
+      }
     }
     console.log(
       JSON.stringify({
@@ -41,7 +48,14 @@ export async function handler(event: any) {
     const row = record.dynamodb?.NewImage ? unmarshall(record.dynamodb.NewImage) : undefined;
     if (!row?.sk?.startsWith('OUTBOX#') || row.status !== 'pending') continue;
     try {
-      await dispatch(service, delivery, row.pk, row.sk);
+      try {
+        await dispatch(service, delivery, row.pk, row.sk);
+      } catch {
+        console.error(JSON.stringify({
+          event: 'outbox_dispatch_failed',
+          correlationId: event.id,
+        }));
+      }
     } catch {
       failures.push({ itemIdentifier: record.dynamodb.SequenceNumber });
     }

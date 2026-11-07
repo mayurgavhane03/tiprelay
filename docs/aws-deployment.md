@@ -88,3 +88,23 @@ Subscribe an operational destination to the SNS topic output and confirm the sub
 ## Post-deploy checks
 
 Sign in with two Google test accounts, configure UPI details separately, pair independent phones and open separate OBS sources. Verify cross-creator access and stream isolation, token expiration, device revocation, URL rotation, duplicated deliveries, disconnected replay expiry, speech failure and deletion. Keep production onboarding disabled operationally until this checklist is signed off. Cognito password signup is disabled. Keep the Google consent screen in testing with an explicit test-user list until acceptance is complete.
+
+## Root package scripts
+
+Commands use the current AWS profile/account/region. Synth, diff and application deployment build Lambda bundles first. Append CDK flags after `--`.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run backend:build` | Bundle backend handlers |
+| `npm run backend:test` | Backend tests |
+| `npm run cdk:bootstrap -- aws://ACCOUNT/REGION` | Bootstrap target |
+| `npm run cdk:list` | List stacks |
+| `npm run cdk:synth -- -c stage=development` | Build and synthesize |
+| `npm run cdk:diff -- TipRelayDev -c stage=development` | Review changes |
+| `npm run cdk:deploy:dev` | Deploy development application |
+| `npm run cdk:deploy:prod` | Deploy production application |
+| `npm run cdk:deploy:speech:dev` | Deploy development speech build infrastructure |
+| `npm run cdk:deploy:speech:prod` | Deploy production speech build infrastructure |
+| `npm run cdk:deploy -- STACK -c stage=development` | Generic deployment |
+
+Application deploys require Google parameters, e.g. `npm run cdk:deploy:dev -- --parameters GoogleClientId=YOUR_ID --parameters GoogleSecretName=tiprelay/development/google -c speechImageDigest=sha256:YOUR_DIGEST`. See the remote speech build guide for publishing the image and obtaining its digest. Speech infrastructure deployment alone does not publish an image. Use `-c skipCloudFront=true` for backend development while hosting is unavailable. CDK IAM approval prompts remain enabled.

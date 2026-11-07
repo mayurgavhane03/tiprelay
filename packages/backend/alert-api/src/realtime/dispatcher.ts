@@ -1,6 +1,6 @@
 import type { Alert } from '@tiprelay/event-contracts';
 import { Service } from '../domain/service';
-import { next, type Row } from '../persistence/store';
+import { Conflict, next, type Row } from '../persistence/store';
 export interface Delivery {
   send(connectionId: string, alert: Alert): Promise<void>;
   enqueue(creatorId: string, jobId: string): Promise<void>;
@@ -20,8 +20,16 @@ export async function replay(service: Service, delivery: Delivery, c: Row) {
   for (const row of alerts) await delivery.send(c.connectionId, await materialize(row, delivery));
 }
 export async function dispatch(service: Service, delivery: Delivery, pk: string, sk: string) {
-  const row = await service.store.get(pk, sk);
-  if (!row || row.status !== 'pending') return;
+  let row = await service.store.get(pk, sk);
+  if (!row || row.status !== 'pending' || (row.leaseUntil ?? 0) > service.clock()) return;
+  const claim = next({ ...row, leaseUntil: service.clock() + 90 });
+  try {
+    await service.store.transact([claim]);
+  } catch (error) {
+    if (error instanceof Conflict) return;
+    throw error;
+  }
+  row = claim.row;
   const id = pk.slice('CREATOR#'.length);
   const profile = await service.store.get(pk, 'PROFILE');
   if (!profile || profile.deleted || profile.banned) {

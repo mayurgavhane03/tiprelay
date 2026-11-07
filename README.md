@@ -2,7 +2,7 @@
 
 Direct-UPI tip alerts for Indian livestreamers. Fans pay the creator’s own UPI address. An Android companion observes supported incoming-credit notifications, and a private OBS Browser Source displays the amount and plays a chime. Creators review matched supporter messages before Piper generates speech.
 
-This repository contains a working local implementation and AWS deployment infrastructure. A backend-only development stack is deployed in AWS account `627551519784`, `ap-south-1`; hosted web and speech are pending AWS account limits. It has **not been approved for public launch**. Physical Android payment capture, OBS recording and Android release signing require the checks in [the release checklist](docs/release-checks.md). Phone notifications are best-effort observations, not settlement confirmation.
+This repository contains a working local implementation and AWS deployment infrastructure. A backend-only development stack is deployed in AWS account `account`, `ap-south-1`; hosted web and speech are pending AWS account limits. It has **not been approved for public launch**. Physical Android payment capture, OBS recording and Android release signing require the checks in [the release checklist](docs/release-checks.md). Phone notifications are best-effort observations, not settlement confirmation.
 
 ## Project layout
 
@@ -108,4 +108,4 @@ Android now reads public URLs and its Cognito client ID from root `.env.android.
 - [Local verification results](docs/verification.md)
 - [Dependency advisory review](docs/dependency-review.md)
 
-This release excludes payment custody, payouts, automatic commission, email ingestion, subscriptions, recorded viewer audio and iOS.
+This release excludes payment custody, payouts, automatic commission, email ingestion, subscriptions and recorded viewer audio. iOS build profiles and a dashboard launcher are available; payment notification capture remains Android-only. See [iOS builds and icons](docs/ios-builds.md).
